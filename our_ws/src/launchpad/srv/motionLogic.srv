@@ -1,0 +1,5 @@
+# no service inputs
+---
+# service outputs (linear and angular velocity)
+float64 linear_vel
+float64 angular_vel
