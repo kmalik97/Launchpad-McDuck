@@ -1,5 +1,4 @@
 #!/usr/bin/env python
-from __future__ import print_function
 import rospy
 from math import floor
 from Adafruit_MotorHAT import Adafruit_MotorHAT
@@ -66,7 +65,7 @@ class Motion_Interface:
         pwm_angular_left = floor(self.angular_vel * LEFT_RES + LEFT_MIN)
         pwm_angular_right = floor(self.angular_vel * RIGHT_RES + RIGHT_MIN)
 
-        # need to negate angular velocity if driving backwards
+        # need to negate angular PWM if driving backwards
         if self.linear_vel < 0:
             pwm_angular_left *= -1
             pwm_angular_right *= -1
@@ -78,17 +77,16 @@ class Motion_Interface:
     # get linear and angular velocity
     def get_velocity(self):
         # need to wait until service is available
-        rospy.wait_for_service('motionLogic')
+        rospy.wait_for_service("motionLogic")
 
         try:
             # service callback function handle
-            handle_motion_logic = rospy.ServiceProxy('motionLogic', motionLogic)
+            handle_motion_logic = rospy.ServiceProxy("motionLogic", motionLogic)
 
             # service response
             velocities = handle_motion_logic()
             self.linear_vel = velocities.linear_vel
             self.angular_vel = velocities.angular_vel
-
         except rospy.ServiceException as e:
             print("motionLogic service call failed: %s"%e)
 
@@ -102,7 +100,7 @@ class Motion_Interface:
 # setup motion logic client
 def client_motion_logic():
     print("initializing motion_interface node")
-    rospy.init_node('motion_interface')
+    rospy.init_node("motion_interface")
     motion_interface = Motion_Interface()
     rospy.on_shutdown(motion_interface.on_shutdown)
     rospy.spin()

@@ -1,0 +1,4 @@
+# no service inputs
+---
+# service outputs (ROS image msg)
+sensor_msgs/Image image

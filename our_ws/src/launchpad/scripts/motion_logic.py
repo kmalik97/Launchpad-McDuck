@@ -1,5 +1,4 @@
 #!/usr/bin/env python
-from __future__ import print_function
 import rospy
 import sys
 import tty
@@ -18,10 +17,9 @@ def readchar():
         termios.tcsetattr(fd, termios.TCSADRAIN, old_settings)
     return ch
 
-
 class Motion_Logic:
     def __init__(self):
-        self.service = rospy.Service('motionLogic', motionLogic, self.handle_motion_logic)
+        self.service = rospy.Service("motionLogic", motionLogic, self.handle_motion_logic)
 
     # determine linear and angular velocity
     def handle_motion_logic(self, req):
@@ -72,15 +70,15 @@ class Motion_Logic:
 
     # shutdown
     def on_shutdown(self):
-        print("motion_logic node shut down")
+        print("motion_logic node shutdown")
 
 # setup motion logic server
 def server_motion_logic():
-    print('initializing motion_logic node')
-    rospy.init_node('motion_logic')
+    print("initializing motion_logic node")
+    rospy.init_node("motion_logic")
     motion_logic = Motion_Logic()    
     rospy.on_shutdown(motion_logic.on_shutdown)
     rospy.spin()
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     server_motion_logic()
