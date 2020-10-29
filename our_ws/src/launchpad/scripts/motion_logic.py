@@ -3,7 +3,7 @@ import rospy
 import sys
 import tty
 import termios
-from launchpad.srv import motionLogic, motionLogicResponse
+from launchpad.srv import motionLogic, motionLogicResponse, command
 
 # read char from terminal
 # from https://github.com/magmax/python-readchar
@@ -23,12 +23,22 @@ class Motion_Logic:
 
     # determine linear and angular velocity
     def handle_motion_logic(self, req):
+
+        # get the image data from image_processing.py
+        rospy.wait_for_service("get_command")
+        try:
+            handle_command = rospy.ServiceProxy("get_command", command)
+            cmd = handle_command()
+        except rospy.ServiceException as e:
+            print("get_command service call failed: %s"%e)
+
         # default is no motion
         linear_vel = 0.0
         angular_vel = 0.0
         
         # get user input
-        inp = readchar()
+        #inp = readchar()
+        inp = 'l'
 
         # drive forward
         if inp == 'w':

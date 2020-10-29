@@ -13,6 +13,7 @@ add_service_files(
   FILES
   motionLogic.srv
   snapshot.srv
+  command.srv
 )
 
 generate_messages(
@@ -26,6 +27,7 @@ catkin_install_python(
   scripts/motion_logic.py
   scripts/motion_interface.py
   scripts/camera_interface.py
+  scripts/image_processing.py
   DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
 )
 
