@@ -84,7 +84,7 @@ class Motion_Interface:
             handle_motion_logic = rospy.ServiceProxy("motionLogic", motionLogic)
 
             # service response
-            velocities = handle_motion_logic()
+            velocities = handle_motion_logic(self.pwm_left, self.pwm_right)
             self.linear_vel = velocities.linear_vel
             self.angular_vel = velocities.angular_vel
         except rospy.ServiceException as e:

@@ -4,7 +4,7 @@ import sys
 import cv2
 import numpy as np
 from cv_bridge import CvBridge, CvBridgeError
-from launchpad.srv import snapshot,command,commandResponse
+from launchpad.srv import snapshot,measurement,measurementResponse
 
 # TO DO: send motion_logic measurements instead of a command, will need to update service, break up into functions (?)
 
@@ -17,11 +17,14 @@ class Image_Processing:
         self.bridge = CvBridge()
         self.rate = 0.01
 
-        # rospy service get_command will return a letter that determines which way the duckiebot should go
-        self.service = rospy.Service("get_command", command, self.handle_get_command)
+        # rospy service get_measurement will return an error from the desired heading
+        self.service = rospy.Service("get_measurement", measurement, self.handle_get_measurement)
     
-    # handle the command service
-    def handle_get_command(self,cmd):
+    # handle the image_measurement service
+    def handle_get_measurement(self,req):
+        # store operating point
+        y_operating = req.y_operating       
+
         rospy.wait_for_service("snapshot")
 
         # get the ROS image
@@ -101,7 +104,7 @@ class Image_Processing:
             print("%d lines"%len(lines))
             for i in range(0, len(lines)):
                 line = lines[i][0]
-                cv2.line(result, (line[0],line[1]), (line[2],line[3]), (0,0,255), 1, cv2.LINE_AA)
+                # cv2.line(result, (line[0],line[1]), (line[2],line[3]), (0,0,255), 1, cv2.LINE_AA)
 
         # polyfit the yellow line
         data_points = np.argwhere(edges_yellow>0)
@@ -110,24 +113,21 @@ class Image_Processing:
             x_points = data_points[:,[1]]
             y_points = data_points[:,[0]]
 
-            cv2.line(result, (x_points[0,:], y_points[0,:]), (x_points[-1,:], y_points[-1,:]), (255,0,255), 1, cv2.LINE_AA)
-
-            curve_coefficients = np.polyfit(y_points[:,0], x_points[:,0], 2)
+            desired_coefficients = np.polyfit(y_points[:,0], x_points[:,0], 2)
             new_y = np.linspace(0, 239, num=240)
-            new_x = np.polyval(curve_coefficients, new_y)
+            new_x = np.polyval(desired_coefficients, new_y)
             new_points = np.asarray([new_x,new_y]).astype(np.int32).T
             cv2.polylines(result, [new_points], False, (0,255,0), 1)   
         
+        # draw a straight line down the middle
+        cv2.line(result, (320/2, 0), (320/2, 240), (0, 0, 255), 1, cv2.LINE_AA)
         # display images
         cv2.imshow("original", image)
         cv2.imshow("result", result)
-        cv2.imshow("white edges", edges_white)
-        cv2.imshow("yellow edges", edges_yellow)
-        cv2.imshow("edges", edges)
         cv2.waitKey(0)
         
-        # arbitrary command
-        return commandResponse("a")
+        x_error = 0.0
+        return measurementResponse(x_error)
 
     # shutdown
     def on_shutdown(self):

@@ -13,7 +13,7 @@ add_service_files(
   FILES
   motionLogic.srv
   snapshot.srv
-  command.srv
+  measurement.srv
 )
 
 generate_messages(

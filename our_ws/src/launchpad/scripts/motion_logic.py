@@ -3,7 +3,7 @@ import rospy
 import sys
 import tty
 import termios
-from launchpad.srv import motionLogic, motionLogicResponse, command
+from launchpad.srv import motionLogic, motionLogicResponse, measurement
 
 # read char from terminal
 # from https://github.com/magmax/python-readchar
@@ -25,17 +25,24 @@ class Motion_Logic:
     def handle_motion_logic(self, req):
 
         # get the image data from image_processing.py
-        rospy.wait_for_service("get_command")
+        rospy.wait_for_service("get_measurement")
         try:
-            handle_command = rospy.ServiceProxy("get_command", command)
-            cmd = handle_command()
+            handle_measurement = rospy.ServiceProxy("get_measurement", measurement)
+            # calculate the operating point
+            pwm_left = req.pwm_left
+            pwm_right = req.pwm_right
+            y_operating = 0.0
+            # get the error from the desired heading
+            meas = handle_measurement(y_operating)
         except rospy.ServiceException as e:
-            print("get_command service call failed: %s"%e)
+            print("get_measurement service call failed: %s"%e)
 
         # default is no motion
         linear_vel = 0.0
         angular_vel = 0.0
         
+        x_error = meas.x_error
+
         # get user input
         #inp = readchar()
         inp = 'l'

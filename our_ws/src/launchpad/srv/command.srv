@@ -1,4 +1,0 @@
-# no service inputs
----
-# service outputs (distance from stuff, for now just return a string)
-string command
