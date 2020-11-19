@@ -41,7 +41,7 @@ class Motion_Logic:
             # get the error from the desired heading
             # use x_error to determine velocities
             x_error = meas.x_error
-            linear_vel = 0.25
+            linear_vel = 0.5
 
             # if error is positive, we want to rotate clockwise 
             if x_error<0:
