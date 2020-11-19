@@ -6,8 +6,6 @@ import numpy as np
 from cv_bridge import CvBridge, CvBridgeError
 from launchpad.srv import snapshot,measurement,measurementResponse
 
-# TO DO: send motion_logic measurements instead of a command, will need to update service, break up into functions (?)
-
 # image_processing.py: get the image from camera_interface.py, spit out string command to motion_logic
 
 class Image_Processing:
@@ -49,13 +47,13 @@ class Image_Processing:
         upper_white = np.array([255, 255, 255])
         
         # set lower and upper bounds (try for different shades/hues of yellow)
-        lower_yellow = np.array([20, 100, 150])
-        upper_yellow = np.array([30, 175, 255])
+        lower_yellow = np.array([25, 80, 150])
+        upper_yellow = np.array([30, 140, 255])
 
         # create mask for yellow and white colors
         mask_white = cv2.inRange(hls, lower_white, upper_white)
         mask_yellow = cv2.inRange(hls, lower_yellow, upper_yellow)
- 
+
         # black out top portion of image so that we ignore the background
         for i in range(240/3):
             for j in range(320):
@@ -101,13 +99,15 @@ class Image_Processing:
         
         # overlay red lines on the original image
         if lines is not None:
-            print("%d lines"%len(lines))
+            #print("%d lines"%len(lines))
             for i in range(0, len(lines)):
                 line = lines[i][0]
                 # cv2.line(result, (line[0],line[1]), (line[2],line[3]), (0,0,255), 1, cv2.LINE_AA)
 
         # polyfit the yellow line
         data_points = np.argwhere(edges_yellow>0)
+
+        x_error = 0.0
         
         if data_points.size > 0:
             x_points = data_points[:,[1]]
@@ -118,6 +118,11 @@ class Image_Processing:
             new_x = np.polyval(desired_coefficients, new_y)
             new_points = np.asarray([new_x,new_y]).astype(np.int32).T
             cv2.polylines(result, [new_points], False, (0,255,0), 1)   
+            # x_operating is found from desired line, y_operating passed as input from motion_logic
+            x_operating = np.polyval(desired_coefficients, y_operating)
+            # get x_error, the difference (eventually in meters) between the center line and the desired center line
+            x_error = x_operating - 160
+
         
         # draw a straight line down the middle
         cv2.line(result, (320/2, 0), (320/2, 240), (0, 0, 255), 1, cv2.LINE_AA)
@@ -126,7 +131,8 @@ class Image_Processing:
         cv2.imshow("result", result)
         cv2.waitKey(0)
         
-        x_error = 0.0
+        print("x_error: %f"%x_error)
+
         return measurementResponse(x_error)
 
     # shutdown
