@@ -49,6 +49,10 @@ class Image_Processing:
         # set lower and upper bounds (try for different shades/hues of yellow)
         lower_yellow = np.array([25, 80, 150])
         upper_yellow = np.array([30, 140, 255])
+        #lower_yellow = np.array([0, 0, 0])
+        #upper_yellow = np.array([255,75,50])
+
+
 
         # create mask for yellow and white colors
         mask_white = cv2.inRange(hls, lower_white, upper_white)
