@@ -43,7 +43,7 @@ class Image_Processing:
         hls = cv2.cvtColor(image, cv2.COLOR_BGR2HLS)
         
         # set lower and upper bounds (try for different shades/hues of white)
-        lower_white = np.array([0, 210, 0])
+        lower_white = np.array([0, 180, 0])
         upper_white = np.array([255, 255, 255])
         
         # set lower and upper bounds (try for different shades/hues of yellow)
@@ -117,7 +117,8 @@ class Image_Processing:
         x_error = 0.0
         
         if data_points.size > 0:
-            x_points = data_points[:,[1]]
+            lane_offset = 75
+            x_points = data_points[:,[1]] + lane_offset
             y_points = data_points[:,[0]]
 
             desired_coefficients = np.polyfit(y_points[:,0], x_points[:,0], 2)
@@ -134,10 +135,11 @@ class Image_Processing:
         # draw a straight line down the middle
         cv2.line(result, (320/2, 0), (320/2, 240), (0, 0, 255), 1, cv2.LINE_AA)
         # display images
-        cv2.imshow("mask_yellow", mask_yellow)
-        cv2.imshow("original", image)
-        cv2.imshow("result", result)
-        cv2.waitKey(0)
+        #cv2.imshow("mask_yellow", mask_yellow)
+        #cv2.imshow("original", image)
+        #cv2.imshow("result", result)
+        #cv2.waitKey(0)
+
         
         print("x_error: %f"%x_error)
 
