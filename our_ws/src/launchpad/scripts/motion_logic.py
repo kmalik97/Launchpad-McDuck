@@ -58,9 +58,9 @@ class Motion_Logic:
             linear_vel = 0.5
 
             # PID Parameters
-            Kp = 0.125
-            Ki = 0
-            Kd = 0
+            Kp = 0.0025
+            Ki = 0.0
+            Kd = 0.001
 
             # PlaceHolder Value
             #running_error = 0
@@ -76,29 +76,32 @@ class Motion_Logic:
             print(motor_offset)
 
             # Motor_offset, will range from [-1, 1] -> [Left, Right]
-
-            right_offset = 0
-            left_offset = 0
-            if motor_offset > 0:
-                right_offset = motor_offset
-                left_offset = -1 * motor_offset
-            elif motor_offset < 0:
-                right_offset = -1*motor_offset
-                left_offset = motor_offset
+            #   Turning left means negative angular velocity, with counterclockwise rotation
 
             # Need to save previous error and running_error
 
             # TODO : Convert motor offsets to angular_vel
 
+            if motor_offset < -1:
+                motor_offset = -1
+            if motor_offset > 1:
+                motor_offset = 1
+
+            angular_vel = -.75*motor_offset
+                
+            """
             # if error is positive, we want to rotate clockwise
             if x_error<0:
                 angular_vel = 0.5
             else:
                 angular_vel = -0.5
+            """        
 
         except rospy.ServiceException as e:
             print("get_measurement service call failed: %s"%e)
 
+        #linear_vel = 0.0
+        #angular_vel = 0.0
         return motionLogicResponse(linear_vel, angular_vel)
 
     # shutdown
@@ -108,7 +111,6 @@ class Motion_Logic:
 # setup motion logic server
 def server_motion_logic():
     print("initializing motion_logic node")
-    print("gets here")
     rospy.init_node("motion_logic")
     motion_logic = Motion_Logic()    
     rospy.on_shutdown(motion_logic.on_shutdown)
