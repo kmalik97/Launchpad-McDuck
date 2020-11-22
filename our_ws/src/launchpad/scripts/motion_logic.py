@@ -58,7 +58,7 @@ class Motion_Logic:
             linear_vel = 0.5
 
             # PID Parameters
-            Kp = 1
+            Kp = 0.125
             Ki = 0
             Kd = 0
 
@@ -73,6 +73,7 @@ class Motion_Logic:
 
             # Calculate Motor Offset
             motor_offset = x_error * Kp + Ki * running_error + Kd * delta_error
+            print(motor_offset)
 
             # Motor_offset, will range from [-1, 1] -> [Left, Right]
 
