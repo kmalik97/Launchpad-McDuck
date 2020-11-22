@@ -3,6 +3,7 @@ import rospy
 import sys
 import tty
 import termios
+import numpy as np
 from launchpad.srv import motionLogic, motionLogicResponse, measurement
 
 # read char from terminal
@@ -43,7 +44,39 @@ class Motion_Logic:
             x_error = meas.x_error
             linear_vel = 0.5
 
-            # if error is positive, we want to rotate clockwise 
+            # PID Parameters
+            Kp = 1
+            Ki = 0
+            Kd = 0
+
+            # PlaceHolder Value
+            running_error = 0
+            prev_error = 0
+
+            # Get running_error
+            running_error = 0 if not((np.sign(x_error) or np.sign(prev_error)) or (
+                        0.01 >= x_error >= -0.01)) else running_error + x_error
+            delta_error = x_error - prev_error
+
+            # Calculate Motor Offset
+            motor_offset = x_error * Kp + Ki * running_error + Kd * delta_error
+
+            # Motor_offset, will range from [-1, 1] -> [Left, Right]
+
+            right_offset = 0
+            left_offset = 0
+            if motor_offset > 0:
+                right_offset = motor_offset
+                left_offset = -1 * motor_offset
+            elif motor_offset < 0:
+                right_offset = -1*motor_offset
+                left_offset = motor_offset
+
+            # Need to save previous error and running_error
+
+            # TODO : Convert motor offsets to angular_vel
+
+            # if error is positive, we want to rotate clockwise
             if x_error<0:
                 angular_vel = 0.5
             else:
