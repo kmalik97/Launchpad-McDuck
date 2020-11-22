@@ -8,6 +8,10 @@ from launchpad.srv import motionLogic, motionLogicResponse, measurement
 
 # read char from terminal
 # from https://github.com/magmax/python-readchar
+
+running_error = None
+prev_error = None
+
 def readchar():
     fd = sys.stdin.fileno()
     old_settings = termios.tcgetattr(fd)
@@ -24,6 +28,15 @@ class Motion_Logic:
 
     # determine linear and angular velocity
     def handle_motion_logic(self, req):
+
+        global running_error
+        global prev_error
+
+        if running_error == None:
+            running_error = 0
+            prev_error = 0
+        
+
 
         # default is no motion
         linear_vel = 0.0
@@ -50,8 +63,8 @@ class Motion_Logic:
             Kd = 0
 
             # PlaceHolder Value
-            running_error = 0
-            prev_error = 0
+            #running_error = 0
+            #prev_error = 0
 
             # Get running_error
             running_error = 0 if not((np.sign(x_error) or np.sign(prev_error)) or (
