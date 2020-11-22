@@ -47,11 +47,14 @@ class Image_Processing:
         upper_white = np.array([255, 255, 255])
         
         # set lower and upper bounds (try for different shades/hues of yellow)
-        lower_yellow = np.array([25, 80, 150])
-        upper_yellow = np.array([30, 140, 255])
-        #lower_yellow = np.array([0, 0, 0])
-        #upper_yellow = np.array([255,75,50])
 
+        # KITCHEN VALUES
+        #lower_yellow = np.array([25, 80, 150])
+        #upper_yellow = np.array([30, 140, 255])
+
+        # LUCAS ROOM VALUES
+        lower_yellow = np.array([20, 100, 100])
+        upper_yellow = np.array([30, 200, 255])
 
 
         # create mask for yellow and white colors
@@ -71,8 +74,8 @@ class Image_Processing:
         # diliations and erosions to remove any small blobs left in image
         mask_white = cv2.erode(mask_white, None, iterations=2)
         mask_white = cv2.dilate(mask_white, None, iterations=2)
-        #mask_yellow = cv2.erode(mask_yellow, None, iterations=0)
-        #mask_yellow = cv2.dilate(mask_yellow, None, iterations=0)
+        #mask_yellow = cv2.erode(mask_yellow, None, iterations=1)
+        #mask_yellow = cv2.dilate(mask_yellow, None, iterations=1)
                
         # from the original image, get the yellow middle line and white boundaries (now in color)
         mask = cv2.bitwise_or(mask_white, mask_yellow)
@@ -131,6 +134,7 @@ class Image_Processing:
         # draw a straight line down the middle
         cv2.line(result, (320/2, 0), (320/2, 240), (0, 0, 255), 1, cv2.LINE_AA)
         # display images
+        cv2.imshow("mask_yellow", mask_yellow)
         cv2.imshow("original", image)
         cv2.imshow("result", result)
         cv2.waitKey(0)
