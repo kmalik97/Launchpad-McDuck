@@ -75,7 +75,8 @@ class Image_Processing:
         upper_red = np.array([17, 210, 200])
         
         # Red Mask 
-        mask_red = cv2.inRange(hls, lower_red, upper_red)
+        hsv = cv2.cvtColor(image,cv2.COLOR_BGR2HSV)
+        mask_red = cv2.inRange(hsv, lower_red, upper_red)
         mask_red = cv2.bitwise_and(image,image,mask=mask_red)
         mask_red = cv2.dilate(mask_red, None, iterations=1)
         
