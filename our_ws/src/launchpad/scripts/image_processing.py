@@ -69,8 +69,45 @@ class Image_Processing:
         # LIVING ROOM VALUES
         lower_yellow = np.array([20, 80, 175])
         upper_yellow = np.array([30, 175,255])
-
-
+        
+        # Red Object Values
+        lower_red = np.array([0, 180, 52])
+        upper_red = np.array([17, 210, 200])
+        
+        # Red Mask 
+        mask_red = cv2.inRange(hls, lower_red, upper_red)
+        mask_red = cv2.bitwise_and(image,image,mask=mask_red)
+        mask = cv2.dilate(mask, None, iterations=1)
+        
+        # Finding Red Object
+        cnts = cv2.findContours(mask.copy(),cv2.RETR_EXTERNAL,cv2.CHAIN_APPROX_SIMPLE)
+        cnts = cnts[0] if len(cnts) == 2 else cnts[1]
+        
+        red_obj_detect = False
+        THRESHOLD = 20
+        
+        # If cnts is empty
+        if not cnts:
+            #print("No Red Found")
+        else:
+            c = max(cnts, key=cv2.contourArea)
+            if cv2.contourArea(c) < threshold:
+                #print("Area under threshold")
+            else:
+                print('Red Object Detected Above Threshold')
+                red_obj_detect = True
+                
+                # Detecting object corners
+                x,y,w,h = cv2.boundingRect(c)
+                
+                # Drawing Rectangle Around object 
+                cv2.rectangle(image,(x,y),(x+w,y+h),(0,255,0),2)
+                
+                # Center of mass 
+                M = cv2.moments(c)
+                center = (int(M["m10"] / M["m00"]), int(M["m01"] / M["m00"]))
+                centerText = "Center Coordinates : ({x_coord} , {y_coord})".format(x_coord=center[0], y_coord=center[1])
+                cv2.putText(image, centerText, (4, 200), font, 1, (0, 255, 0), 2, cv2.LINE_AA)
 
         # create mask for yellow and white colors
         mask_white = cv2.inRange(hls, lower_white, upper_white)
@@ -156,6 +193,7 @@ class Image_Processing:
         # draw a straight line down the middle
         cv2.line(result, (320/2, 0), (320/2, 240), (0, 0, 255), 1, cv2.LINE_AA)
         # display images
+        cv2.imshow("red_mas",mask_red)
         cv2.imshow("mask_yellow", mask_yellow)
         cv2.imshow("original", image)
         cv2.imshow("result", result)
