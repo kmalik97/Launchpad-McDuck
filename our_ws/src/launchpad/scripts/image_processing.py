@@ -57,8 +57,8 @@ class Image_Processing:
         #upper_yellow = np.array([30, 200, 255])
 
         # LIVING ROOM VALUES
-        lower_yellow = np.array([20, 80, 130])
-        upper_yellow = np.array([30, 175,220])
+        lower_yellow = np.array([20, 80, 175])
+        upper_yellow = np.array([30, 175,255])
 
 
 
