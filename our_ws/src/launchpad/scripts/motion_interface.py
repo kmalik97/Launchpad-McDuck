@@ -21,7 +21,7 @@ class Motion_Interface:
         self.pwm_right = 0
         self.linear_vel = 0.0
         self.angular_vel = 0.0
-        self.timer = rospy.Timer(rospy.Duration(0.1), self.set_motors)
+        self.timer = rospy.Timer(rospy.Duration(0.01), self.set_motors)
 
     # set motors
     def set_motors(self, event):
@@ -55,7 +55,7 @@ class Motion_Interface:
     # determine motor PWM
     def get_pwm(self):    
         # fractional weighting of linear velocity to angular velocity
-        gain = 0.75
+        gain = 0.7
 
         # PWM due to linear velocity
         pwm_linear_left = floor(self.linear_vel * LEFT_RES + LEFT_MIN)
