@@ -39,11 +39,21 @@ class Image_Processing:
         except rospy.ServiceException as e:
             print("snapshot service call failed: %s"%e)
         
+        # undistorting image here 
+        DIM=(320, 240)
+        K=np.array([[157.48126107325643, 0.0, 155.54100584796126], [0.0, 157.4460985081828, 124.1673880384651], [0.0, 0.0, 1.0]])
+        D=np.array([[-0.016100807266528787], [-0.0660261841490366], [0.12071322102537432], [-0.07516938046185537]])
+        h,w = img.shape[:2]
+        map1, map2 = cv2.fisheye.initUndistortRectifyMap(K, D, np.eye(3), K, DIM, cv2.CV_16SC2)
+        image = cv2.remap(img, map1, map2, interpolation=cv2.INTER_LINEAR, borderMode=cv2.BORDER_CONSTANT)
+        
+        # Image is now the undistorted image
+        
         # hls: hue lightness saturation
         hls = cv2.cvtColor(image, cv2.COLOR_BGR2HLS)
         
         # set lower and upper bounds (try for different shades/hues of white)
-        lower_white = np.array([0, 210, 0])
+        lower_white = np.array([0, 180, 0])
         upper_white = np.array([255, 255, 255])
         
         # set lower and upper bounds (try for different shades/hues of yellow)
@@ -53,8 +63,13 @@ class Image_Processing:
         #upper_yellow = np.array([30, 140, 255])
 
         # LUCAS ROOM VALUES
-        lower_yellow = np.array([20, 100, 100])
-        upper_yellow = np.array([30, 200, 255])
+        #lower_yellow = np.array([20, 100, 100])
+        #upper_yellow = np.array([30, 200, 255])
+
+        # LIVING ROOM VALUES
+        lower_yellow = np.array([20, 80, 175])
+        upper_yellow = np.array([30, 175,255])
+
 
 
         # create mask for yellow and white colors
@@ -74,7 +89,7 @@ class Image_Processing:
         # diliations and erosions to remove any small blobs left in image
         mask_white = cv2.erode(mask_white, None, iterations=2)
         mask_white = cv2.dilate(mask_white, None, iterations=2)
-        #mask_yellow = cv2.erode(mask_yellow, None, iterations=1)
+        #mask_yellow = cv2.erode(mask_yellow, None, iterations=2)
         #mask_yellow = cv2.dilate(mask_yellow, None, iterations=1)
                
         # from the original image, get the yellow middle line and white boundaries (now in color)
@@ -83,7 +98,7 @@ class Image_Processing:
 
         # edge detection
         edges_white = cv2.Canny(mask_white, 200, 400)
-        edges_yellow = cv2.Canny(mask_yellow, 200, 400)
+        edges_yellow = cv2.Canny(mask_yellow, 200, 400)     # do we even need this?
         edges = cv2.bitwise_or(edges_white, edges_yellow)
         
         # reject lines shorter than this
@@ -111,16 +126,23 @@ class Image_Processing:
                 line = lines[i][0]
                 # cv2.line(result, (line[0],line[1]), (line[2],line[3]), (0,0,255), 1, cv2.LINE_AA)
 
-        # polyfit the yellow line
+        # get the pixel coordinates that are yellow
         data_points = np.argwhere(edges_yellow>0)
 
         x_error = 0.0
         
         if data_points.size > 0:
-            x_points = data_points[:,[1]]
+            lane_offset = 75
+            x_points = data_points[:,[1]] + lane_offset
             y_points = data_points[:,[0]]
 
-            desired_coefficients = np.polyfit(y_points[:,0], x_points[:,0], 2)
+            # complete camera calibration so that x_points, y_points are transformed to a new set of points
+
+
+
+
+
+            desired_coefficients = np.polyfit(y_points[:,0], x_points[:,0], 1)
             new_y = np.linspace(0, 239, num=240)
             new_x = np.polyval(desired_coefficients, new_y)
             new_points = np.asarray([new_x,new_y]).astype(np.int32).T
@@ -138,6 +160,7 @@ class Image_Processing:
         cv2.imshow("original", image)
         cv2.imshow("result", result)
         cv2.waitKey(0)
+
         
         print("x_error: %f"%x_error)
 
