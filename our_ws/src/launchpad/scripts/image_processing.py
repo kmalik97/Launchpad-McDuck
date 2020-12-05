@@ -75,17 +75,21 @@ class Image_Processing:
         upper_red = np.array([17, 210, 200])
         
         # Red Mask 
-        red_image = np.uint8(image)
+        red_image = image.astype(np.uint8)
         hsv = cv2.cvtColor(red_image,cv2.COLOR_BGR2HSV)
         mask_red = cv2.inRange(hsv, lower_red, upper_red)
         mask_red = cv2.bitwise_and(red_image,red_image,mask=mask_red)
         mask_red = cv2.dilate(mask_red, None, iterations=1)
-        
-        
+
+        # grayscale
+        hsv = cv2.cvtColor(mask_red, cv2.COLOR_BGR2GRAY)
+        ret, thresh = cv2.threshold(hsv, 127, 255, 0)
+        cv2.imshow('thresh', thresh)
+        im2, cnts, hierarchy = cv2.findContours(thresh, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
         
         # Finding Red Object
-        cnts = cv2.findContours(mask_red.copy(),cv2.RETR_EXTERNAL,cv2.CHAIN_APPROX_SIMPLE)
-        cnts = cnts[0] if len(cnts) == 2 else cnts[1]
+        #cnts = cv2.findContours(mask_red.copy(),cv2.RETR_EXTERNAL,cv2.CHAIN_APPROX_SIMPLE)
+        cnts = [] #if len(cnts) == 2 else cnts[1]
         
         red_obj_detect = False
         THRESHOLD = 20
