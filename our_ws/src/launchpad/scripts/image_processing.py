@@ -41,11 +41,14 @@ class Image_Processing:
         
         # undistorting image here 
         DIM=(320, 240)
-        K=np.array([[157.48126107325643, 0.0, 155.54100584796126], [0.0, 157.4460985081828, 124.1673880384651], [0.0, 0.0, 1.0]])
-        D=np.array([[-0.016100807266528787], [-0.0660261841490366], [0.12071322102537432], [-0.07516938046185537]])
+        K=np.array([[311237.6216546483, 0.0, -10856.13857800261], [0.0, 127783.32352617213, -5169.186600452768], [0.0, 0.0, 1.0]])
+        D=np.array([[63147.97466330088], [-2354720.605330372], [75756655.56291966], [-1097622800.5009964]])
         h,w = image.shape[:2]
-        map1, map2 = cv2.fisheye.initUndistortRectifyMap(K, D, np.eye(3), K, DIM, cv2.CV_16SC2)
-        image = cv2.remap(image, map1, map2, interpolation=cv2.INTER_LINEAR, borderMode=cv2.BORDER_CONSTANT)
+        K_new, roi = cv2.getOptimalNewCameraMatrix(K, D, (w,h), 1, (w,h))
+        dst = cv2.undistort(image, K, D, None, K_new)
+        cv2.imshow('dst',dst) 
+        #map1, map2 = cv2.fisheye.initUndistortRectifyMap(K, D, np.eye(3), K, DIM, cv2.CV_16SC2)
+        #image = cv2.remap(image, map1, map2, interpolation=cv2.INTER_LINEAR, borderMode=cv2.BORDER_CONSTANT)
         
         # Image is now the undistorted image
         
