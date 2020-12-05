@@ -75,10 +75,13 @@ class Image_Processing:
         upper_red = np.array([17, 210, 200])
         
         # Red Mask 
-        hsv = cv2.cvtColor(image,cv2.COLOR_BGR2HSV)
+        red_image = np.uint8(image)
+        hsv = cv2.cvtColor(red_image,cv2.COLOR_BGR2HSV)
         mask_red = cv2.inRange(hsv, lower_red, upper_red)
-        mask_red = cv2.bitwise_and(image,image,mask=mask_red)
+        mask_red = cv2.bitwise_and(red_image,red_image,mask=mask_red)
         mask_red = cv2.dilate(mask_red, None, iterations=1)
+        
+        
         
         # Finding Red Object
         cnts = cv2.findContours(mask_red.copy(),cv2.RETR_EXTERNAL,cv2.CHAIN_APPROX_SIMPLE)
@@ -102,13 +105,13 @@ class Image_Processing:
                 x,y,w,h = cv2.boundingRect(c)
                 
                 # Drawing Rectangle Around object 
-                cv2.rectangle(image,(x,y),(x+w,y+h),(0,255,0),2)
+                cv2.rectangle(red_image,(x,y),(x+w,y+h),(0,255,0),2)
                 
                 # Center of mass 
                 M = cv2.moments(c)
                 center = (int(M["m10"] / M["m00"]), int(M["m01"] / M["m00"]))
                 centerText = "Center Coordinates : ({x_coord} , {y_coord})".format(x_coord=center[0], y_coord=center[1])
-                cv2.putText(image, centerText, (4, 200), font, 1, (0, 255, 0), 2, cv2.LINE_AA)
+                cv2.putText(red_image, centerText, (4, 200), font, 1, (0, 255, 0), 2, cv2.LINE_AA)
 
         # create mask for yellow and white colors
         mask_white = cv2.inRange(hls, lower_white, upper_white)
