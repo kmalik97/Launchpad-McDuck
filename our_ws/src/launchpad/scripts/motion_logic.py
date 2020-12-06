@@ -33,6 +33,8 @@ class Motion_Logic:
             # get the error from the desired heading
             # use x_error to determine velocities
             x_error = meas.x_error
+            # get the status of whether or not there is a object 
+            red_obj_det = meas.red_obj_det
 
             # PID Parameters
             Kp = 0.0025
@@ -80,8 +82,10 @@ class Motion_Logic:
 
         self.linear_vel = linear_vel
         self.angular_vel = angular_vel
-        linear_vel = 0.0
-        angular_vel = 0.0
+        
+        if red_obj_det:
+            linear_vel = 0.0
+            angular_vel = 0.0
         return motionLogicResponse(linear_vel, angular_vel)
 
     # shutdown

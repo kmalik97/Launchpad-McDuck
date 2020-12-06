@@ -3,3 +3,4 @@ float64 y_operating
 ---
 # service outputs (deviation from desired heading)
 float64 x_error
+bool red_obj_det
