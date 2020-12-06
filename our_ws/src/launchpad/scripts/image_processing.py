@@ -100,7 +100,7 @@ class Image_Processing:
         #cnts = cv2.findContours(mask_red.copy(),cv2.RETR_EXTERNAL,cv2.CHAIN_APPROX_SIMPLE)
     
         
-        red_obj_detect = False
+        red_obj_det = False
         THRESHOLD = 20
 
         # Known Parameters 
@@ -118,7 +118,7 @@ class Image_Processing:
         else:
             c = max(cnts, key=cv2.contourArea)
             if cv2.contourArea(c) < THRESHOLD:
-                red_obj_detect = False
+                red_obj_det = False
                 print("Area under threshold")
             else:
                 #print('Red Object Detected Above Threshold')
@@ -131,7 +131,7 @@ class Image_Processing:
                 print("Distance to object %d" % distance)
 
                 if distance <= 200:
-                    red_obj_detect = True
+                    red_obj_det = True
 
                 # Drawing Rectangle Around object 
                 cv2.rectangle(red_image,(x,y),(x+w,y+h),(0,255,0),2)
@@ -227,12 +227,12 @@ class Image_Processing:
         # draw a straight line down the middle
         cv2.line(result, (320/2, 0), (320/2, 240), (0, 0, 255), 1, cv2.LINE_AA)
         # display images
-        cv2.imshow("red_mas",mask_red)
-        cv2.imshow("mask_yellow", mask_yellow)
-        cv2.imshow("original", image)
-        cv2.imshow("result", result)
-        cv2.imshow("red image", red_image)
-        cv2.waitKey(0)
+        #cv2.imshow("red_mas",mask_red)
+        #cv2.imshow("mask_yellow", mask_yellow)
+        #cv2.imshow("original", image)
+        #cv2.imshow("result", result)
+        #cv2.imshow("red image", red_image)
+        #cv2.waitKey(0)
 
         
         print("x_error: %f"%x_error)
