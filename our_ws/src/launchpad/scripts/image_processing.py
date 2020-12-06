@@ -102,7 +102,16 @@ class Image_Processing:
         
         red_obj_detect = None
         THRESHOLD = 20
+
+        # Known Parameters 
+        REAL_SIZE = 150 # mm  
+        PIXEL_WIDTH = 124 # pixels
+        KNOWN_DISTANCE = 270 # mm
+
+        FOCAL_LENGTH = (PIXEL_WIDTH * KNOWN_DISTANCE) / REAL_SIZE 
         
+
+
         # If cnts is empty
         if len(cnts) == 0:
             red_obj_detect = False
@@ -118,7 +127,10 @@ class Image_Processing:
                 
                 # Detecting object corners of the red object in pixels
                 x,y,w,h = cv2.boundingRect(c)
-                print(w)
+                
+                distance = (REAL_SIZE * FOCAL_LENGTH) / w 
+                print("Distance to object %d" % distance)
+
                 #distance = 10 cm
 
                 #pixel_width = ?
