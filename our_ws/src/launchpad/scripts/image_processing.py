@@ -80,10 +80,11 @@ class Image_Processing:
         mask_red = cv2.inRange(hsv, lower_red, upper_red)
         #mask_red = cv2.bitwise_and(red_image,red_image,mask=mask_red)
         mask_red = cv2.GaussianBlur(mask_red, (11,11), 0)
-        mask_red = cv2.erode(mask_red, None, iterations=2)
+        #mask_red = cv2.erode(mask_red, None, iterations=2)
         mask_red = cv2.dilate(mask_red, None, iterations=1)
-        edges_red = cv2.Canny(mask_red, 200, 400)
-
+        #edges_red = cv2.Canny(mask_red, 200, 400)
+        edges_red = mask_red
+        
 
         # grayscale
         #hsv = cv2.cvtColor(edges_red, cv2.COLOR_BGR2GRAY)
@@ -91,24 +92,26 @@ class Image_Processing:
         thresh = edges_red
         cv2.imshow('thresh', thresh)
         
-        im2, cnts, hierarchy = cv2.findContours(thresh, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
+        cnts = cv2.findContours(edges_red, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)[0]
+
         
         # Finding Red Object
         #cnts = cv2.findContours(mask_red.copy(),cv2.RETR_EXTERNAL,cv2.CHAIN_APPROX_SIMPLE)
-        cnts = [] #if len(cnts) == 2 else cnts[1]
+    
         
-        red_obj_detect = False
+        red_obj_detect = None
         THRESHOLD = 20
         
         # If cnts is empty
-        if not cnts:
+        if len(cnts) == 0:
             red_obj_detect = False
         else:
             c = max(cnts, key=cv2.contourArea)
             if cv2.contourArea(c) < threshold:
+                red_obj_detect = False
                 print("Area under threshold")
             else:
-                print('Red Object Detected Above Threshold')
+                #print('Red Object Detected Above Threshold')
                 red_obj_detect = True
                 
                 # Detecting object corners
@@ -121,6 +124,8 @@ class Image_Processing:
                 M = cv2.moments(c)
                 center = (int(M["m10"] / M["m00"]), int(M["m01"] / M["m00"]))
                 centerText = "Center Coordinates : ({x_coord} , {y_coord})".format(x_coord=center[0], y_coord=center[1])
+                font = cv2.FONT_HERSHEY_SIMPLEX
+                
                 cv2.putText(red_image, centerText, (4, 200), font, 1, (0, 255, 0), 2, cv2.LINE_AA)
 
         # create mask for yellow and white colors
