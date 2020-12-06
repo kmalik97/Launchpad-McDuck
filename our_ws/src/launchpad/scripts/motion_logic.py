@@ -86,6 +86,8 @@ class Motion_Logic:
         if red_obj_det:
             linear_vel = 0.0
             angular_vel = 0.0
+        #linear_vel = 0.0
+        #angular_vel = 0.0
         return motionLogicResponse(linear_vel, angular_vel)
 
     # shutdown
