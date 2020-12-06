@@ -41,14 +41,11 @@ class Image_Processing:
         
         # undistorting image here 
         DIM=(320, 240)
-        K=np.array([[311237.6216546483, 0.0, -10856.13857800261], [0.0, 127783.32352617213, -5169.186600452768], [0.0, 0.0, 1.0]])
-        D=np.array([[63147.97466330088], [-2354720.605330372], [75756655.56291966], [-1097622800.5009964]])
+        K=np.array([[157.48126107325643, 0.0, 155.54100584796126], [0.0, 157.4460985081828, 124.1673880384651], [0.0, 0.0, 1.0]])
+        D=np.array([[-0.016100807266528787], [-0.0660261841490366], [0.12071322102537432], [-0.07516938046185537]])
         h,w = image.shape[:2]
-        K_new, roi = cv2.getOptimalNewCameraMatrix(K, D, (w,h), 1, (w,h))
-        dst = cv2.undistort(image, K, D, None, K_new)
-        cv2.imshow('dst',dst) 
-        #map1, map2 = cv2.fisheye.initUndistortRectifyMap(K, D, np.eye(3), K, DIM, cv2.CV_16SC2)
-        #image = cv2.remap(image, map1, map2, interpolation=cv2.INTER_LINEAR, borderMode=cv2.BORDER_CONSTANT)
+        map1, map2 = cv2.fisheye.initUndistortRectifyMap(K, D, np.eye(3), K, DIM, cv2.CV_16SC2)
+        image = cv2.remap(image, map1, map2, interpolation=cv2.INTER_LINEAR, borderMode=cv2.BORDER_CONSTANT)
         
         # Image is now the undistorted image
         
@@ -72,8 +69,79 @@ class Image_Processing:
         # LIVING ROOM VALUES
         lower_yellow = np.array([20, 80, 175])
         upper_yellow = np.array([30, 175,255])
+        
+        # Red Object Values
+        lower_red = np.array([0, 180, 35])
+        upper_red = np.array([17, 210, 200])
+        
+        # Red Mask 
+        red_image = image.astype(np.uint8)
+        hsv = cv2.cvtColor(red_image,cv2.COLOR_BGR2HSV)
+        mask_red = cv2.inRange(hsv, lower_red, upper_red)
+        #mask_red = cv2.bitwise_and(red_image,red_image,mask=mask_red)
+        mask_red = cv2.GaussianBlur(mask_red, (11,11), 0)
+        #mask_red = cv2.erode(mask_red, None, iterations=2)
+        #mask_red = cv2.dilate(mask_red, None, iterations=1)
+        #edges_red = cv2.Canny(mask_red, 200, 400)
+        edges_red = mask_red
+        
+
+        # grayscale
+        #hsv = cv2.cvtColor(edges_red, cv2.COLOR_BGR2GRAY)
+        #ret, thresh = cv2.threshold(hsv, 127, 255, 0)
+        thresh = edges_red
+        cv2.imshow('thresh', thresh)
+        
+        cnts = cv2.findContours(edges_red, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)[1]
+
+        # print(cnts)
+        
+        # Finding Red Object
+        #cnts = cv2.findContours(mask_red.copy(),cv2.RETR_EXTERNAL,cv2.CHAIN_APPROX_SIMPLE)
+    
+        
+        red_obj_detect = False
+        THRESHOLD = 20
+
+        # Known Parameters 
+        REAL_WIDTH = 150 # mm  
+        PIXEL_WIDTH = 124 # pixels
+        KNOWN_DISTANCE = 270 # mm
+
+        FOCAL_LENGTH = (PIXEL_WIDTH * KNOWN_DISTANCE) / REAL_WIDTH 
+        
 
 
+        # If cnts is empty
+        if len(cnts) == 0:
+            red_obj_detect = False
+        else:
+            c = max(cnts, key=cv2.contourArea)
+            if cv2.contourArea(c) < THRESHOLD:
+                red_obj_detect = False
+                print("Area under threshold")
+            else:
+                #print('Red Object Detected Above Threshold')
+
+                
+                # Detecting object corners of the red object in pixels
+                x,y,w,h = cv2.boundingRect(c)
+                
+                distance = (REAL_WIDTH * FOCAL_LENGTH) / w 
+                print("Distance to object %d" % distance)
+
+                if distance <= 200:
+                    red_obj_detect = True
+
+                # Drawing Rectangle Around object 
+                cv2.rectangle(red_image,(x,y),(x+w,y+h),(0,255,0),2)
+                
+                # Center of mass 
+                M = cv2.moments(c)
+                center = (int(M["m10"] / M["m00"]), int(M["m01"] / M["m00"]))
+                centerText = "Center Coordinates : ({x_coord} , {y_coord})".format(x_coord=center[0], y_coord=center[1])
+                font = cv2.FONT_HERSHEY_SIMPLEX
+                cv2.putText(red_image, centerText, (4, 200), font, 0.5, (0, 255, 0), 2, cv2.LINE_AA)
 
         # create mask for yellow and white colors
         mask_white = cv2.inRange(hls, lower_white, upper_white)
@@ -159,15 +227,17 @@ class Image_Processing:
         # draw a straight line down the middle
         cv2.line(result, (320/2, 0), (320/2, 240), (0, 0, 255), 1, cv2.LINE_AA)
         # display images
+        cv2.imshow("red_mas",mask_red)
         cv2.imshow("mask_yellow", mask_yellow)
         cv2.imshow("original", image)
         cv2.imshow("result", result)
+        cv2.imshow("red image", red_image)
         cv2.waitKey(0)
 
         
         print("x_error: %f"%x_error)
 
-        return measurementResponse(x_error)
+        return measurementResponse(x_error, red_obj_det)
 
     # shutdown
     def on_shutdown(self):
