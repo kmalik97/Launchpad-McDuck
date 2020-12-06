@@ -100,15 +100,15 @@ class Image_Processing:
         #cnts = cv2.findContours(mask_red.copy(),cv2.RETR_EXTERNAL,cv2.CHAIN_APPROX_SIMPLE)
     
         
-        red_obj_detect = None
+        red_obj_detect = False
         THRESHOLD = 20
 
         # Known Parameters 
-        REAL_SIZE = 150 # mm  
+        REAL_WIDTH = 150 # mm  
         PIXEL_WIDTH = 124 # pixels
         KNOWN_DISTANCE = 270 # mm
 
-        FOCAL_LENGTH = (PIXEL_WIDTH * KNOWN_DISTANCE) / REAL_SIZE 
+        FOCAL_LENGTH = (PIXEL_WIDTH * KNOWN_DISTANCE) / REAL_WIDTH 
         
 
 
@@ -122,25 +122,16 @@ class Image_Processing:
                 print("Area under threshold")
             else:
                 #print('Red Object Detected Above Threshold')
-                red_obj_detect = True
 
                 
                 # Detecting object corners of the red object in pixels
                 x,y,w,h = cv2.boundingRect(c)
                 
-                distance = (REAL_SIZE * FOCAL_LENGTH) / w 
+                distance = (REAL_WIDTH * FOCAL_LENGTH) / w 
                 print("Distance to object %d" % distance)
 
-                #distance = 10 cm
-
-                #pixel_width = ?
-
-                #focal_length = (pixel_width * known_distance) / real_size
-                # Calibration part
-
-                # Now when we see it again
-                #pixel_width = ?
-                #distance = (real_size * focal_length) / pixel_width
+                if distance <= 200:
+                    red_obj_detect = True
 
                 # Drawing Rectangle Around object 
                 cv2.rectangle(red_image,(x,y),(x+w,y+h),(0,255,0),2)
@@ -246,7 +237,7 @@ class Image_Processing:
         
         print("x_error: %f"%x_error)
 
-        return measurementResponse(x_error)
+        return measurementResponse(x_error, red_obj_det)
 
     # shutdown
     def on_shutdown(self):
