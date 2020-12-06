@@ -107,7 +107,7 @@ class Image_Processing:
             red_obj_detect = False
         else:
             c = max(cnts, key=cv2.contourArea)
-            if cv2.contourArea(c) < threshold:
+            if cv2.contourArea(c) < THRESHOLD:
                 red_obj_detect = False
                 print("Area under threshold")
             else:
