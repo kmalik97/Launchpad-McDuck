@@ -71,7 +71,7 @@ class Image_Processing:
         upper_yellow = np.array([30, 175,255])
         
         # Red Object Values
-        lower_red = np.array([0, 180, 52])
+        lower_red = np.array([0, 180, 35])
         upper_red = np.array([17, 210, 200])
         
         # Red Mask 
@@ -81,7 +81,7 @@ class Image_Processing:
         #mask_red = cv2.bitwise_and(red_image,red_image,mask=mask_red)
         mask_red = cv2.GaussianBlur(mask_red, (11,11), 0)
         #mask_red = cv2.erode(mask_red, None, iterations=2)
-        mask_red = cv2.dilate(mask_red, None, iterations=1)
+        #mask_red = cv2.dilate(mask_red, None, iterations=1)
         #edges_red = cv2.Canny(mask_red, 200, 400)
         edges_red = mask_red
         
@@ -92,8 +92,9 @@ class Image_Processing:
         thresh = edges_red
         cv2.imshow('thresh', thresh)
         
-        cnts = cv2.findContours(edges_red, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)[0]
+        cnts = cv2.findContours(edges_red, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)[1]
 
+        # print(cnts)
         
         # Finding Red Object
         #cnts = cv2.findContours(mask_red.copy(),cv2.RETR_EXTERNAL,cv2.CHAIN_APPROX_SIMPLE)
@@ -113,10 +114,22 @@ class Image_Processing:
             else:
                 #print('Red Object Detected Above Threshold')
                 red_obj_detect = True
+
                 
-                # Detecting object corners
+                # Detecting object corners of the red object in pixels
                 x,y,w,h = cv2.boundingRect(c)
-                
+                print(w)
+                #distance = 10 cm
+
+                #pixel_width = ?
+
+                #focal_length = (pixel_width * known_distance) / real_size
+                # Calibration part
+
+                # Now when we see it again
+                #pixel_width = ?
+                #distance = (real_size * focal_length) / pixel_width
+
                 # Drawing Rectangle Around object 
                 cv2.rectangle(red_image,(x,y),(x+w,y+h),(0,255,0),2)
                 
@@ -125,8 +138,7 @@ class Image_Processing:
                 center = (int(M["m10"] / M["m00"]), int(M["m01"] / M["m00"]))
                 centerText = "Center Coordinates : ({x_coord} , {y_coord})".format(x_coord=center[0], y_coord=center[1])
                 font = cv2.FONT_HERSHEY_SIMPLEX
-                
-                cv2.putText(red_image, centerText, (4, 200), font, 1, (0, 255, 0), 2, cv2.LINE_AA)
+                cv2.putText(red_image, centerText, (4, 200), font, 0.5, (0, 255, 0), 2, cv2.LINE_AA)
 
         # create mask for yellow and white colors
         mask_white = cv2.inRange(hls, lower_white, upper_white)
@@ -216,6 +228,7 @@ class Image_Processing:
         cv2.imshow("mask_yellow", mask_yellow)
         cv2.imshow("original", image)
         cv2.imshow("result", result)
+        cv2.imshow("red image", red_image)
         cv2.waitKey(0)
 
         
