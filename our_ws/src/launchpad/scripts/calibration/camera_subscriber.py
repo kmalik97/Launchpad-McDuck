@@ -7,7 +7,7 @@ from sensor_msgs.msg import Image
 def listener():
     # node setup
     rospy.init_node('camera_subscriber')
-    sub = rospy.Subscriber('raw_image', Image, process_image)
+    sub = rospy.Subscriber('image_raw', Image, process_image)
     rospy.spin()
 
     # shutdown windows
