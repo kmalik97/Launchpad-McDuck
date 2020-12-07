@@ -8,7 +8,7 @@ from sensor_msgs.msg import Image
 def talker():
     # node setup
     rospy.init_node('camera_publisher')
-    pub = rospy.Publisher('raw_image', Image, queue_size=10)
+    pub = rospy.Publisher('image_raw', Image, queue_size=10)
     rate = rospy.Rate(10)
     bridge = CvBridge()
 
