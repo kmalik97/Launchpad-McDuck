@@ -1,7 +1,8 @@
+#!/usr/bin/env python
 import rospy
 from picamera import PiCamera
 from picamera.array import PiRGBArray
-from cv_bridge import CVBridge, CVBridgeError
+from cv_bridge import CvBridge, CvBridgeError
 from sensor_msgs.msg import Image
 
 def talker():
