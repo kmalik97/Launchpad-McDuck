@@ -28,8 +28,8 @@ catkin_install_python(
   scripts/motion_interface.py
   scripts/camera_interface.py
   scripts/image_processing.py
-  scripts/camera_publisher.py
-  scripts/camera_subscriber.py
+  scripts/calibration/camera_publisher.py
+  scripts/calibration/camera_subscriber.py
   DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
 )
 
