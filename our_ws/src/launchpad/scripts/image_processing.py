@@ -40,12 +40,16 @@ class Image_Processing:
             print("snapshot service call failed: %s"%e)
         
         # undistorting image here 
-        DIM=(320, 240)
-        K=np.array([[157.48126107325643, 0.0, 155.54100584796126], [0.0, 157.4460985081828, 124.1673880384651], [0.0, 0.0, 1.0]])
-        D=np.array([[-0.016100807266528787], [-0.0660261841490366], [0.12071322102537432], [-0.07516938046185537]])
+        DIM = (320,240)
+        K = np.array([[160.023219, 0, 162.971810], [0, 160.263543, 123.423868], [0, 0, 1]])
+        D = np.array([[-0.266205], [0.045222], [-0.001402], [-0.000906]])
         h,w = image.shape[:2]
-        map1, map2 = cv2.fisheye.initUndistortRectifyMap(K, D, np.eye(3), K, DIM, cv2.CV_16SC2)
-        image = cv2.remap(image, map1, map2, interpolation=cv2.INTER_LINEAR, borderMode=cv2.BORDER_CONSTANT)
+        #map1, map2 = cv2.fisheye.initUndistortRectifyMap(K, D, np.eye(3), K, DIM, cv2.CV_16SC2)
+        #image = cv2.remap(image, map1, map2, interpolation=cv2.INTER_LINEAR, borderMode=cv2.BORDER_CONSTANT)
+        
+        # undistort
+        K_new, roi = cv2.getOptimalNewCameraMatrix(K, D, DIM, 1, DIM)
+        und = cv2.undistort(image, K, D, None, K_new)
         
         # Image is now the undistorted image
         
