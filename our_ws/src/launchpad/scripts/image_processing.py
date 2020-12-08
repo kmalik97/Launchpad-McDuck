@@ -63,9 +63,6 @@ class Image_Processing:
         
         # set lower and upper bounds (try for different shades/hues of yellow)
 
-        # KITCHEN VALUES
-        #lower_yellow = np.array([25, 80, 150])
-        #upper_yellow = np.array([30, 140, 255])
 
         # LUCAS ROOM VALUES
         #lower_yellow = np.array([20, 100, 100])
