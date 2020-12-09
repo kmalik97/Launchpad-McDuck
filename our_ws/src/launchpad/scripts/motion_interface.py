@@ -68,8 +68,8 @@ class Motion_Interface:
         pwm_linear_right = np.sign(self.linear_vel) * floor(abs(self.linear_vel) * RIGHT_RES + RIGHT_MIN)
 
         # PWM due to angular velocity
-        pwm_angular_left = np.sign(self.angular_vel)*floor(abs(self.angular_vel) * LEFT_RES)
-        pwm_angular_right = np.sign(self.angular_vel)*floor(abs(self.angular_vel) * RIGHT_RES)
+        pwm_angular_left = np.sign(self.angular_vel) * floor(abs(self.angular_vel) * LEFT_RES)
+        pwm_angular_right = np.sign(self.angular_vel) * floor(abs(self.angular_vel) * RIGHT_RES)
 
         # need to negate angular PWM if driving backwards
         if self.linear_vel < 0:
@@ -81,7 +81,7 @@ class Motion_Interface:
         pwm_right = max(int(linear_gain * pwm_linear_right + angular_gain * pwm_angular_right), RIGHT_MIN)
 
         # limit how much the PWM can change
-        pwm_delta = 15
+        pwm_delta = 15000
         if abs(pwm_left - self.pwm_left) > pwm_delta:
             pwm_left = np.sign(pwm_left - self.pwm_left) * pwm_delta + self.pwm_left
         if abs(pwm_right - self.pwm_right) > pwm_delta:
@@ -102,7 +102,7 @@ class Motion_Interface:
             handle_motion_logic = rospy.ServiceProxy("motionLogic", motionLogic)
 
             # service response
-            velocities = handle_motion_logic(self.pwm_left, self.pwm_right)
+            velocities = handle_motion_logic()
             self.linear_vel = velocities.linear_vel
             self.angular_vel = velocities.angular_vel
         except rospy.ServiceException as e:
@@ -113,6 +113,8 @@ class Motion_Interface:
         # set motor speed
         self.motor_left.setSpeed(0)
         self.motor_right.setSpeed(0)
+        self.motor_left.run(Adafruit_MotorHAT.FORWARD)
+        self.motor_right.run(Adafruit_MotorHAT.FORWARD)
         self.motor_left.run(Adafruit_MotorHAT.RELEASE)
         self.motor_right.run(Adafruit_MotorHAT.RELEASE)
         del self.motorhat
