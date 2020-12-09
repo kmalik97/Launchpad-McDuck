@@ -1,6 +1,4 @@
-# inputs are motor PWMs
-int32 pwm_left
-int32 pwm_right
+# no service inputs
 ---
 # service outputs (linear and angular velocity)
 float64 linear_vel

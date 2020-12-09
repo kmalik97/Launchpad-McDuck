@@ -1,5 +1,4 @@
-# service inputs
-float64 y_operating
+# no service inputs
 ---
 # service outputs (deviation from desired heading)
 float64 x_error

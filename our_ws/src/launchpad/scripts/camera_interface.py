@@ -18,15 +18,10 @@ class Camera_Interface:
 
     # take a snapshot with the camera
     def handle_snapshot(self, req):
-        # get snapshot
-        start_timer = time.time()
-        #self.camera.capture(self.frame, format="bgr")
-
+        # get snapshot from camera stream
         self.camera.capture(self.frame, format="bgr", use_video_port=True)
-        print("total time: %f"%(time.time()-start_timer))
         image = self.frame.array
         self.frame.truncate(0)
-
 
         # convert cv2 image to ROS image
         try:
@@ -34,7 +29,6 @@ class Camera_Interface:
             return snapshotResponse(image_ros)
         except CvBridgeError as e:
             print("cv2 to ROS conversion failed: %s"%e)
-
             
     # shutdown
     def on_shutdown(self):

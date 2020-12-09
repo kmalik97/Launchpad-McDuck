@@ -16,25 +16,20 @@ class Motion_Logic:
 
     # determine linear and angular velocity
     def handle_motion_logic(self, req):
-
+        # default remain on current trajectory
         linear_vel = self.linear_vel
         angular_vel = self.angular_vel
 
-        # get the image data from image_processing.py
         rospy.wait_for_service("get_measurement")
+        
+        # get the image data from image_processing.py
         try:
             handle_measurement = rospy.ServiceProxy("get_measurement", measurement)
-            # calculate the operating point
-            pwm_left = req.pwm_left
-            pwm_right = req.pwm_right
-            
-            # the point at which we determine the error, how far in front of us we want to take the error
-            y_operating_mm = 100
-            meas = handle_measurement(y_operating_mm)
+            meas = handle_measurement()
 
-            # get the error from the desired heading
-            # use x_error to determine velocities
+            # error from desired heading, used to calculate velocities
             x_error = meas.x_error
+
             # get the status of whether or not there is a object 
             red_obj_det = meas.red_obj_det
 
@@ -43,47 +38,35 @@ class Motion_Logic:
             Ki = 0.001
             Kd = 0.001
 
-            # PlaceHolder Value
-            #running_error = 0
-            #prev_error = 0
-
-            # Get running_error: 
+            # running error is the error accumulation over time 
             # if there is a sign change or its close to zero, otherwise keep adding the error
             if not(np.sign(x_error) + np.sign(self.prev_error)) or (abs(x_error) < 0.01):
                 self.running_error = 0 
             else: 
                 self.running_error += x_error
+            
+            # error difference between this function call and the previous function call
             delta_error = x_error - self.prev_error
+            
             print("x_error: %f, running error: %f, prev_error: %f"%(x_error,self.running_error, self.prev_error))
 
+            # saturate running error
             if abs(self.running_error) > 2000:
                 self.running_error = np.sign(self.running_error)*2000
-            # Calculate Motor Offset
+            
+            # calculate motor offset
             motor_offset = x_error * Kp + Ki * self.running_error + Kd * delta_error
             
-            # Motor_offset, will range from [-1, 1] -> [Left, Right]
-            #   Turning left means negative angular velocity, with counterclockwise rotation
-
-            # Need to save previous error and running_error
-
-            # TODO : Convert motor offsets to angular_vel
-
+            # saturate motor offset
             if motor_offset < -1:
                 motor_offset = -1
             if motor_offset > 1:
                 motor_offset = 1
 
-            #angular_vel = -.75*motor_offset
+            # convert motor offset to angular velocity
+            # positive motor offset = turn left = negative angular velocity
             angular_vel = -1*motor_offset
                 
-            """
-            # if error is positive, we want to rotate clockwise
-            if x_error<0:
-                angular_vel = 0.5
-            else:
-                angular_vel = -0.5
-            """        
-
         except rospy.ServiceException as e:
             print("get_measurement service call failed: %s"%e)
 
@@ -91,9 +74,6 @@ class Motion_Logic:
         self.angular_vel = angular_vel
         self.prev_error = x_error
         
-        if False:
-            linear_vel = 0.0
-            angular_vel = 0.0
         #linear_vel = 0.0
         #angular_vel = 0.0
         
