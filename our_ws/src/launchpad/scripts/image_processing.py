@@ -10,18 +10,14 @@ from launchpad.srv import snapshot,measurement,measurementResponse
 
 class Image_Processing:
     def __init__(self):
-
-        # converting ROS image messages to OpenCV image
         self.bridge = CvBridge()
-
-        # rospy service get_measurement will return an error from the desired heading
         self.service = rospy.Service("get_measurement", measurement, self.handle_get_measurement)
     
     # handle the image_measurement service
     def handle_get_measurement(self,req):
 
-        # store operating point
-        y_operating_mm = req.y_operating       
+        # how far in front of us (mm) we want to calculate heading error
+        y_operating_mm = 100       
 
         rospy.wait_for_service("snapshot")
 
@@ -39,31 +35,25 @@ class Image_Processing:
         except rospy.ServiceException as e:
             print("snapshot service call failed: %s"%e)
         
-        # undistorting image here 
+        # image resolution
         DIM = (320,240)
+
+        # intrinsic camera matrix
         K = np.array([[160.023219, 0, 162.971810], [0, 160.263543, 123.423868], [0, 0, 1]])
+        
+        # distortion coefficients
         D = np.array([[-0.266205], [0.045222], [-0.001402], [-0.000906]])
-        h,w = image.shape[:2]
-        #map1, map2 = cv2.fisheye.initUndistortRectifyMap(K, D, np.eye(3), K, DIM, cv2.CV_16SC2)
-        #image = cv2.remap(image, map1, map2, interpolation=cv2.INTER_LINEAR, borderMode=cv2.BORDER_CONSTANT)
+        
         # black out top portion of image so that we ignore the background
         for i in range(240/3):
             for j in range(320):
                 image[i][j] = np.asarray([0,0,0])
 
-
-        # undistort
+        # new camera matrix for undistorted image
         K_new, roi = cv2.getOptimalNewCameraMatrix(K, D, DIM, 1, DIM)
+        
+        # undistort
         und = cv2.undistort(image, K, D, None, K_new)
-        
-        # Image is now the undistorted image
-        
-        # hls: hue lightness saturation
-        #hls = cv2.cvtColor(image, cv2.COLOR_BGR2HLS)
-        
-        # set lower and upper bounds (try for different shades/hues of white)
-        lower_white = np.array([0, 180, 0])
-        upper_white = np.array([255, 255, 255])
         
         # Red Object Values
         lower_red = np.array([0, 180, 35])
@@ -145,11 +135,6 @@ class Image_Processing:
 
         mask_yellow = cv2.inRange(hsv, lower_yellow, upper_yellow)
 
-        # black out top portion of image so that we ignore the background
-        for i in range(240/3):
-            for j in range(320):
-                mask_yellow[i][j] = 0
-
         # smooth the mask to allow for better edge detection
         mask_yellow = cv2.GaussianBlur(mask_yellow, (3,3), 0)
 
@@ -165,31 +150,6 @@ class Image_Processing:
         edges_yellow = cv2.Canny(mask_yellow, 200, 400)     # do we even need this?
         edges = edges_yellow
         
-        # reject lines shorter than this
-        min_line_length = 5
-
-        # maximum gap allowed between line segments for them to be considered a single line
-        max_line_gap = 10
-
-        # 1 degree angle precision
-        angle_precision = np.pi/180
-        
-        # rho is the perpendicular distance from the origin to the line
-        rho_precision = 1
-       
-        # minimum vote it should get for it to be considered a line (depends on number of points on line)
-        min_vote = 10
-        
-        # create lines from edges
-        lines = cv2.HoughLinesP(edges, rho_precision, angle_precision, min_vote, None, min_line_length, max_line_gap)
-        
-        # overlay red lines on the original image
-        if lines is not None:
-            #print("%d lines"%len(lines))
-            for i in range(0, len(lines)):
-                line = lines[i][0]
-                # cv2.line(result, (line[0],line[1]), (line[2],line[3]), (0,0,255), 1, cv2.LINE_AA)
-
         # get the pixel coordinates that are yellow
         data_points = np.argwhere(edges_yellow>0)
 
@@ -212,19 +172,22 @@ class Image_Processing:
             reg_yellow_pix = np.asarray([x_yellow_pix, y_yellow_pix]).astype(np.int32).T
             cv2.polylines(result, [reg_yellow_pix], False, (0,255,255), 1)   
             
-            # convert image plane points to world points
-            # homography matrix
-            #H = np.array( [[120.0, 151.0, 50736 ], [0, 72.0, 37055.0], [0, 1.0, 316.0] ])
+            # extrinsic rotation
             R = np.array([[1, 0, 0],[0, -.342, -0.9397], [0, .9397, -.342]])
+            
+            # extrinsic translation
             t = np.array([[0], [25.5652], [222.1405]])
+            
+            # extrinsic matrix
             T = np.concatenate((R[:,0:2], t), axis=1)
+            
+            # homography matrix
             H = np.matmul(K_new,T)
+
+            # convert image coordinates to world coordinates
             reg_yellow_pix = np.concatenate((reg_yellow_pix, np.ones((240,1))), axis=1).T
             Hinv = np.linalg.inv(H)
             reg_yellow_mm = np.matmul(Hinv, reg_yellow_pix)
-
-            #fail = np.argwhere(reg_yellow_mm[2,:]==0)
-
             reg_yellow_mm = reg_yellow_mm / reg_yellow_mm[2,:]
 
             # get desired heading from yellow line
@@ -246,8 +209,6 @@ class Image_Processing:
             # x_error_pix[0]: width in pixels, subtract from center to get error from center 
             x_error_pix = (x_error_pix[0]/x_error_pix[2])-160
         
-        # draw a straight line down the middle
-        # cv2.line(result, (320/2, 0), (320/2, 240), (0, 0, 255), 1, cv2.LINE_AA)
         #cv2.imshow("red_mask",mask_red)
         #cv2.imshow("mask_yellow", mask_yellow)
         #cv2.imshow("original", image)
@@ -270,7 +231,6 @@ def process_snapshot():
     image_processing = Image_Processing()
     rospy.on_shutdown(image_processing.on_shutdown)
     rospy.spin()
-
 
 if __name__ == "__main__":
     process_snapshot()
