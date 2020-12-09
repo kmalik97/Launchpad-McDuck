@@ -11,7 +11,7 @@ class Motion_Logic:
         self.service = rospy.Service("motionLogic", motionLogic, self.handle_motion_logic)
         self.running_error = 0
         self.prev_error = 0
-        self.linear_vel = 0.6
+        self.linear_vel = 0.55
         self.angular_vel = 0.0
 
     # determine linear and angular velocity
@@ -27,9 +27,11 @@ class Motion_Logic:
             # calculate the operating point
             pwm_left = req.pwm_left
             pwm_right = req.pwm_right
-            y_operating = 120   # the point at which we determine the error, how far in front of us we want to take the error
-            meas = handle_measurement(y_operating)
-            print("meas: %f"%meas.x_error)
+            
+            # the point at which we determine the error, how far in front of us we want to take the error
+            y_operating_mm = 100
+            meas = handle_measurement(y_operating_mm)
+
             # get the error from the desired heading
             # use x_error to determine velocities
             x_error = meas.x_error
@@ -37,23 +39,28 @@ class Motion_Logic:
             red_obj_det = meas.red_obj_det
 
             # PID Parameters
-            Kp = 0.0025
-            Ki = 0.0
+            Kp = 0.001
+            Ki = 0.001
             Kd = 0.001
 
             # PlaceHolder Value
             #running_error = 0
             #prev_error = 0
 
-            # Get running_error
-            self.running_error = 0 if not((np.sign(x_error) or np.sign(self.prev_error)) or (
-                        0.01 >= x_error >= -0.01)) else self.running_error + x_error
+            # Get running_error: 
+            # if there is a sign change or its close to zero, otherwise keep adding the error
+            if not(np.sign(x_error) + np.sign(self.prev_error)) or (abs(x_error) < 0.01):
+                self.running_error = 0 
+            else: 
+                self.running_error += x_error
             delta_error = x_error - self.prev_error
+            print("x_error: %f, running error: %f, prev_error: %f"%(x_error,self.running_error, self.prev_error))
 
+            if abs(self.running_error) > 2000:
+                self.running_error = np.sign(self.running_error)*2000
             # Calculate Motor Offset
             motor_offset = x_error * Kp + Ki * self.running_error + Kd * delta_error
-            print(motor_offset)
-
+            
             # Motor_offset, will range from [-1, 1] -> [Left, Right]
             #   Turning left means negative angular velocity, with counterclockwise rotation
 
@@ -82,12 +89,14 @@ class Motion_Logic:
 
         self.linear_vel = linear_vel
         self.angular_vel = angular_vel
+        self.prev_error = x_error
         
-        if red_obj_det:
+        if False:
             linear_vel = 0.0
             angular_vel = 0.0
         #linear_vel = 0.0
         #angular_vel = 0.0
+        
         return motionLogicResponse(linear_vel, angular_vel)
 
     # shutdown

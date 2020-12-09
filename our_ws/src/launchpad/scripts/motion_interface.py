@@ -1,14 +1,15 @@
 #!/usr/bin/env python
 import rospy
+import numpy as np
 from math import floor
 from Adafruit_MotorHAT import Adafruit_MotorHAT
 from launchpad.srv import motionLogic
 
 # define constants
-LEFT_MIN = 0
+LEFT_MIN = 50
 LEFT_MAX = 255
 LEFT_RES = LEFT_MAX - LEFT_MIN
-RIGHT_MIN = 0
+RIGHT_MIN = 50
 RIGHT_MAX = 255
 RIGHT_RES = RIGHT_MAX - RIGHT_MIN
 
@@ -31,8 +32,6 @@ class Motion_Interface:
         # get motor PWM
         self.get_pwm()
         
-        print("vel = [%.2f, %.2f], pwm = [%d, %d]"%(self.linear_vel, self.angular_vel, self.pwm_left, self.pwm_right))
-
         # set motor speed
         self.motor_left.setSpeed(abs(self.pwm_left))
         self.motor_right.setSpeed(abs(self.pwm_right))
@@ -55,15 +54,21 @@ class Motion_Interface:
     # determine motor PWM
     def get_pwm(self):    
         # fractional weighting of linear velocity to angular velocity
-        gain = 0.7
+        linear_gain = 0.75 - 0.3*(abs(self.angular_vel))
+        angular_gain = 0.25
+
+        if linear_gain < 0.5:
+            linear_gain = 0.5
 
         # PWM due to linear velocity
-        pwm_linear_left = floor(self.linear_vel * LEFT_RES + LEFT_MIN)
-        pwm_linear_right = floor(self.linear_vel * RIGHT_RES + RIGHT_MIN)
+        pwm_linear_left = max(floor(self.linear_vel * LEFT_RES + LEFT_MIN), LEFT_MIN)
+        pwm_linear_right = max(floor(self.linear_vel * RIGHT_RES + RIGHT_MIN), RIGHT_MIN)
 
         # PWM due to angular velocity
-        pwm_angular_left = floor(self.angular_vel * LEFT_RES + LEFT_MIN)
-        pwm_angular_right = floor(self.angular_vel * RIGHT_RES + RIGHT_MIN)
+        pwm_angular_left = np.sign(self.angular_vel)*floor(abs(self.angular_vel) * LEFT_RES)
+        pwm_angular_right = np.sign(self.angular_vel)*floor(abs(self.angular_vel) * RIGHT_RES)
+
+          
 
         # need to negate angular PWM if driving backwards
         if self.linear_vel < 0:
@@ -71,8 +76,24 @@ class Motion_Interface:
             pwm_angular_right *= -1
 
         # total PWM
-        self.pwm_left = -int(gain * pwm_linear_left - (1 - gain) * pwm_angular_left)
-        self.pwm_right = int(gain * pwm_linear_right + (1 - gain) * pwm_angular_right)
+        pwm_left = min(int(-1*linear_gain * pwm_linear_left + (angular_gain) * pwm_angular_left), -1*LEFT_MIN)
+        pwm_right = max(int(linear_gain * pwm_linear_right + (angular_gain) * pwm_angular_right), RIGHT_MIN)
+
+        # if we are stepping up or down the motor values (when we get out of a turn)
+        pwm_delta = 15
+        if abs(pwm_left-self.pwm_left) > pwm_delta:
+            pwm_left = (np.sign(pwm_left)*pwm_delta) + self.pwm_left 
+        if abs(pwm_right-self.pwm_right) > pwm_delta:
+            pwm_right = (np.sign(pwm_right)*pwm_delta) + self.pwm_right 
+
+
+        self.pwm_left = pwm_left
+        self.pwm_right = pwm_right
+
+        print("vel = [%.2f, %.2f], pwm = [%d, %d]"%(self.linear_vel, self.angular_vel, self.pwm_left, self.pwm_right))
+        #self.pwm_left = 0
+        #self.pwm_right = 0
+
 
     # get linear and angular velocity
     def get_velocity(self):
@@ -92,6 +113,10 @@ class Motion_Interface:
 
     # shutdown
     def on_shutdown(self):
+        # set motor speed
+        self.motor_left.setSpeed(LEFT_MIN)
+        self.motor_right.setSpeed(LEFT_MIN)
+
         self.motor_left.run(Adafruit_MotorHAT.RELEASE)
         self.motor_right.run(Adafruit_MotorHAT.RELEASE)
         del self.motorhat
