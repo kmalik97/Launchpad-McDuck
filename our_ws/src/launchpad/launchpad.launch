@@ -1,0 +1,10 @@
+<launch>
+        # nodes run on computer
+        <node name="image_processing" pkg="launchpad" type="image_processing.py" output="screen"/>
+        
+	# nodes run on duckiebot
+        <machine name="duckiebot" address="192.168.1.180" user="duckiebot" env-loader="~/Launchpad-McDuck/our_ws/src/launchpad/ros_env.sh"/>
+	<node machine="duckiebot" name="motion_interface" pkg="launchpad" type="motion_interface.py"/>
+        <node machine="duckiebot" name="motion_logic" pkg="launchpad" type="motion_logic.py"/>
+        <node machine="duckiebot" name="camera_interface" pkg="launchpad" type="camera_interface.py"/>
+</launch>

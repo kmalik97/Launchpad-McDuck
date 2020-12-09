@@ -31,9 +31,9 @@ class Image_Processing:
             try:
                 image = self.bridge.imgmsg_to_cv2(image_ros, "bgr8")
             except CvBridgeError as e:
-                print("ROS to cv2 conversion failed: %s"%e)
+                rospy.loginfo("image_processing: ROS to cv2 conversion failed: %s"%e)
         except rospy.ServiceException as e:
-            print("snapshot service call failed: %s"%e)
+            rospy.loginfo("image_processing: snapshot service call failed: %s"%e)
         
         # image resolution
         DIM = (320,240)
@@ -216,17 +216,17 @@ class Image_Processing:
         cv2.imshow("red image", red_image)
         cv2.waitKey(10)
 
-        print("x_error_pix: %f"%x_error_pix)
+        rospy.loginfo("image_processing: x_error_pix: %f"%x_error_pix)
 
         return measurementResponse(x_error_pix, red_obj_det)
 
     # shutdown
     def on_shutdown(self):
         cv2.destroyAllWindows()
-        print("image_processing node shutdown")
+        rospy.loginfo("image_processing: image_processing node shutdown")
 
 def process_snapshot():
-    print("initializing image_processing node")
+    rospy.loginfo("image_processing: initializing image_processing node")
     rospy.init_node("image_processing")
     image_processing = Image_Processing()
     rospy.on_shutdown(image_processing.on_shutdown)
