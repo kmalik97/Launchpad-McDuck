@@ -19,7 +19,6 @@ class Image_Processing:
     
     # handle the image_measurement service
     def handle_get_measurement(self,req):
-        start_time = time.time()
 
         # store operating point
         y_operating_mm = req.y_operating       
@@ -47,7 +46,12 @@ class Image_Processing:
         h,w = image.shape[:2]
         #map1, map2 = cv2.fisheye.initUndistortRectifyMap(K, D, np.eye(3), K, DIM, cv2.CV_16SC2)
         #image = cv2.remap(image, map1, map2, interpolation=cv2.INTER_LINEAR, borderMode=cv2.BORDER_CONSTANT)
-        
+        # black out top portion of image so that we ignore the background
+        for i in range(240/3):
+            for j in range(320):
+                image[i][j] = np.asarray([0,0,0])
+
+
         # undistort
         K_new, roi = cv2.getOptimalNewCameraMatrix(K, D, DIM, 1, DIM)
         und = cv2.undistort(image, K, D, None, K_new)
@@ -60,17 +64,6 @@ class Image_Processing:
         # set lower and upper bounds (try for different shades/hues of white)
         lower_white = np.array([0, 180, 0])
         upper_white = np.array([255, 255, 255])
-        
-        # set lower and upper bounds (try for different shades/hues of yellow)
-
-
-        # LUCAS ROOM VALUES
-        #lower_yellow = np.array([20, 100, 100])
-        #upper_yellow = np.array([30, 200, 255])
-
-        # LIVING ROOM VALUES
-        lower_yellow = np.array([20, 80, 175])
-        upper_yellow = np.array([30, 175,235])
         
         # Red Object Values
         lower_red = np.array([0, 180, 35])
@@ -146,9 +139,9 @@ class Image_Processing:
                 cv2.putText(red_image, centerText, (4, 200), font, 0.5, (0, 255, 0), 2, cv2.LINE_AA)
 
 
-        # LIVING ROOM HSV VALUES
-        lower_yellow = np.array([0, 215, 115])
-        upper_yellow = np.array([56, 255, 255])
+        # CLOSET VALUES
+        lower_yellow = np.array([21, 144, 201])
+        upper_yellow = np.array([100, 255, 255])
 
         mask_yellow = cv2.inRange(hsv, lower_yellow, upper_yellow)
 
@@ -161,8 +154,8 @@ class Image_Processing:
         mask_yellow = cv2.GaussianBlur(mask_yellow, (3,3), 0)
 
         # diliations and erosions to remove any small blobs left in image
-        #mask_yellow = cv2.erode(mask_yellow, None, iterations=2)
-        #mask_yellow = cv2.dilate(mask_yellow, None, iterations=1)
+        mask_yellow = cv2.erode(mask_yellow, None, iterations=1)
+        mask_yellow = cv2.dilate(mask_yellow, None, iterations=1)
                
         # from the original image, get the yellow middle line and white boundaries (now in color)
         mask = mask_yellow
@@ -258,10 +251,9 @@ class Image_Processing:
         #cv2.imshow("red_mask",mask_red)
         #cv2.imshow("mask_yellow", mask_yellow)
         #cv2.imshow("original", image)
-        #cv2.imshow("result", result)
-        #cv2.imshow("red image", red_image)
-        #cv2.waitKey(10)
-        print("total time: %f"%(time.time()-start_time))
+        cv2.imshow("result", result)
+        cv2.imshow("red image", red_image)
+        cv2.waitKey(10)
 
         print("x_error_pix: %f"%x_error_pix)
 
