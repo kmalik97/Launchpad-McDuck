@@ -2,10 +2,10 @@
 import rospy 
 import sys
 import cv2
+import time
 import numpy as np
 from cv_bridge import CvBridge, CvBridgeError
 from launchpad.srv import snapshot,measurement,measurementResponse
-
 # image_processing.py: get the image from camera_interface.py, spit out string command to motion_logic
 
 class Image_Processing:
@@ -13,15 +13,16 @@ class Image_Processing:
 
         # converting ROS image messages to OpenCV image
         self.bridge = CvBridge()
-        self.rate = 0.01
 
         # rospy service get_measurement will return an error from the desired heading
         self.service = rospy.Service("get_measurement", measurement, self.handle_get_measurement)
     
     # handle the image_measurement service
     def handle_get_measurement(self,req):
+        start_time = time.time()
+
         # store operating point
-        y_operating = req.y_operating       
+        y_operating_mm = req.y_operating       
 
         rospy.wait_for_service("snapshot")
 
@@ -54,7 +55,7 @@ class Image_Processing:
         # Image is now the undistorted image
         
         # hls: hue lightness saturation
-        hls = cv2.cvtColor(image, cv2.COLOR_BGR2HLS)
+        #hls = cv2.cvtColor(image, cv2.COLOR_BGR2HLS)
         
         # set lower and upper bounds (try for different shades/hues of white)
         lower_white = np.array([0, 180, 0])
@@ -62,9 +63,6 @@ class Image_Processing:
         
         # set lower and upper bounds (try for different shades/hues of yellow)
 
-        # KITCHEN VALUES
-        #lower_yellow = np.array([25, 80, 150])
-        #upper_yellow = np.array([30, 140, 255])
 
         # LUCAS ROOM VALUES
         #lower_yellow = np.array([20, 100, 100])
@@ -72,7 +70,7 @@ class Image_Processing:
 
         # LIVING ROOM VALUES
         lower_yellow = np.array([20, 80, 175])
-        upper_yellow = np.array([30, 175,255])
+        upper_yellow = np.array([30, 175,235])
         
         # Red Object Values
         lower_red = np.array([0, 180, 35])
@@ -94,7 +92,7 @@ class Image_Processing:
         #hsv = cv2.cvtColor(edges_red, cv2.COLOR_BGR2GRAY)
         #ret, thresh = cv2.threshold(hsv, 127, 255, 0)
         thresh = edges_red
-        cv2.imshow('thresh', thresh)
+        #cv2.imshow('thresh', thresh)
         
         cnts = cv2.findContours(edges_red, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)[1]
 
@@ -147,34 +145,32 @@ class Image_Processing:
                 font = cv2.FONT_HERSHEY_SIMPLEX
                 cv2.putText(red_image, centerText, (4, 200), font, 0.5, (0, 255, 0), 2, cv2.LINE_AA)
 
-        # create mask for yellow and white colors
-        mask_white = cv2.inRange(hls, lower_white, upper_white)
-        mask_yellow = cv2.inRange(hls, lower_yellow, upper_yellow)
+
+        # LIVING ROOM HSV VALUES
+        lower_yellow = np.array([0, 215, 115])
+        upper_yellow = np.array([56, 255, 255])
+
+        mask_yellow = cv2.inRange(hsv, lower_yellow, upper_yellow)
 
         # black out top portion of image so that we ignore the background
         for i in range(240/3):
             for j in range(320):
-                mask_white[i][j] = 0
                 mask_yellow[i][j] = 0
 
         # smooth the mask to allow for better edge detection
-        mask_white = cv2.GaussianBlur(mask_white, (11,11), 0)
         mask_yellow = cv2.GaussianBlur(mask_yellow, (3,3), 0)
 
         # diliations and erosions to remove any small blobs left in image
-        mask_white = cv2.erode(mask_white, None, iterations=2)
-        mask_white = cv2.dilate(mask_white, None, iterations=2)
         #mask_yellow = cv2.erode(mask_yellow, None, iterations=2)
         #mask_yellow = cv2.dilate(mask_yellow, None, iterations=1)
                
         # from the original image, get the yellow middle line and white boundaries (now in color)
-        mask = cv2.bitwise_or(mask_white, mask_yellow)
+        mask = mask_yellow
         result = cv2.bitwise_and(image, image, mask=mask)
 
         # edge detection
-        edges_white = cv2.Canny(mask_white, 200, 400)
         edges_yellow = cv2.Canny(mask_yellow, 200, 400)     # do we even need this?
-        edges = cv2.bitwise_or(edges_white, edges_yellow)
+        edges = edges_yellow
         
         # reject lines shorter than this
         min_line_length = 5
@@ -204,44 +200,72 @@ class Image_Processing:
         # get the pixel coordinates that are yellow
         data_points = np.argwhere(edges_yellow>0)
 
-        x_error = 0.0
+        x_error_pix = 0.0
         
         if data_points.size > 0:
-            lane_offset = 75
-            x_points = data_points[:,[1]] + lane_offset
-            y_points = data_points[:,[0]]
+            # distance between yellow line and desired heading (mm)
+            lane_offset = np.array([[120],[0],[0]])
 
-            # complete camera calibration so that x_points, y_points are transformed to a new set of points
+            # location of yellow line points (pixels)
+            x_points_pix = data_points[:,[1]]
+            y_points_pix = data_points[:,[0]]
+            
+            # yellow line in image plane
+            yellow_coefficients_pix = np.polyfit(y_points_pix[:,0], x_points_pix[:,0], 1)
+            y_yellow_pix = np.linspace(0, 239, num=240)
+            x_yellow_pix = np.polyval(yellow_coefficients_pix, y_yellow_pix)
+            
+            # display regressed yellow line in image plane
+            reg_yellow_pix = np.asarray([x_yellow_pix, y_yellow_pix]).astype(np.int32).T
+            cv2.polylines(result, [reg_yellow_pix], False, (0,255,255), 1)   
+            
+            # convert image plane points to world points
+            # homography matrix
+            #H = np.array( [[120.0, 151.0, 50736 ], [0, 72.0, 37055.0], [0, 1.0, 316.0] ])
+            R = np.array([[1, 0, 0],[0, -.342, -0.9397], [0, .9397, -.342]])
+            t = np.array([[0], [25.5652], [222.1405]])
+            T = np.concatenate((R[:,0:2], t), axis=1)
+            H = np.matmul(K_new,T)
+            reg_yellow_pix = np.concatenate((reg_yellow_pix, np.ones((240,1))), axis=1).T
+            Hinv = np.linalg.inv(H)
+            reg_yellow_mm = np.matmul(Hinv, reg_yellow_pix)
 
+            #fail = np.argwhere(reg_yellow_mm[2,:]==0)
 
+            reg_yellow_mm = reg_yellow_mm / reg_yellow_mm[2,:]
 
+            # get desired heading from yellow line
+            desired_mm = np.add(reg_yellow_mm, lane_offset)
+            
+            # desired line in world plane
+            desired_coefficients_mm = np.polyfit(desired_mm[1,:], desired_mm[0,:], 1)
 
+            # x-component of operating point in world plane
+            x_operating_mm = np.polyval(desired_coefficients_mm, y_operating_mm)
 
-            desired_coefficients = np.polyfit(y_points[:,0], x_points[:,0], 1)
-            new_y = np.linspace(0, 239, num=240)
-            new_x = np.polyval(desired_coefficients, new_y)
-            new_points = np.asarray([new_x,new_y]).astype(np.int32).T
-            cv2.polylines(result, [new_points], False, (0,255,0), 1)   
-            # x_operating is found from desired line, y_operating passed as input from motion_logic
-            x_operating = np.polyval(desired_coefficients, y_operating)
-            # get x_error, the difference (eventually in meters) between the center line and the desired center line
-            x_error = x_operating - 160
+            # get x_error, the difference between the true heading and desired heading in world plane
+            x_error_mm = x_operating_mm
 
+            # convert x difference in mm to width difference in pixels
+            x_error_pix = np.array([[x_operating_mm], [y_operating_mm], [1]])
+            x_error_pix = np.matmul(H,x_error_pix)
+
+            # x_error_pix[0]: width in pixels, subtract from center to get error from center 
+            x_error_pix = (x_error_pix[0]/x_error_pix[2])-160
         
         # draw a straight line down the middle
-        cv2.line(result, (320/2, 0), (320/2, 240), (0, 0, 255), 1, cv2.LINE_AA)
-        # display images
-        #cv2.imshow("red_mas",mask_red)
+        # cv2.line(result, (320/2, 0), (320/2, 240), (0, 0, 255), 1, cv2.LINE_AA)
+        #cv2.imshow("red_mask",mask_red)
         #cv2.imshow("mask_yellow", mask_yellow)
         #cv2.imshow("original", image)
         #cv2.imshow("result", result)
         #cv2.imshow("red image", red_image)
-        #cv2.waitKey(0)
+        #cv2.waitKey(10)
+        print("total time: %f"%(time.time()-start_time))
 
-        
-        print("x_error: %f"%x_error)
+        print("x_error_pix: %f"%x_error_pix)
 
-        return measurementResponse(x_error, red_obj_det)
+        return measurementResponse(x_error_pix, red_obj_det)
 
     # shutdown
     def on_shutdown(self):
