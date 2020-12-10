@@ -12,7 +12,8 @@ class Image_Processing:
     def __init__(self):
         self.bridge = CvBridge()
         self.service = rospy.Service("get_measurement", measurement, self.handle_get_measurement)
-    
+        self.prev_error = 0.0
+
     # handle the image_measurement service
     def handle_get_measurement(self,req):
 
@@ -44,6 +45,8 @@ class Image_Processing:
         # distortion coefficients
         D = np.array([[-0.266205], [0.045222], [-0.001402], [-0.000906]])
         
+        red_image = image.copy()
+
         # black out top portion of image so that we ignore the background
         for i in range(240/3):
             for j in range(320):
@@ -56,11 +59,11 @@ class Image_Processing:
         und = cv2.undistort(image, K, D, None, K_new)
         
         # Red Object Values
-        lower_red = np.array([0, 180, 35])
-        upper_red = np.array([17, 210, 200])
+        lower_red = np.array([51, 193, 107])
+        upper_red = np.array([179, 255, 255])
         
         # Red Mask 
-        red_image = image.astype(np.uint8)
+        red_image = red_image.astype(np.uint8)
         hsv = cv2.cvtColor(red_image,cv2.COLOR_BGR2HSV)
         mask_red = cv2.inRange(hsv, lower_red, upper_red)
         #mask_red = cv2.bitwise_and(red_image,red_image,mask=mask_red)
@@ -124,23 +127,24 @@ class Image_Processing:
                 # Center of mass 
                 M = cv2.moments(c)
                 center = (int(M["m10"] / M["m00"]), int(M["m01"] / M["m00"]))
-                centerText = "Center Coordinates : ({x_coord} , {y_coord})".format(x_coord=center[0], y_coord=center[1])
+                centerText = "Distance to Object {distance}".format(distance=distance)
                 font = cv2.FONT_HERSHEY_SIMPLEX
                 cv2.putText(red_image, centerText, (4, 200), font, 0.5, (0, 255, 0), 2, cv2.LINE_AA)
 
 
         # CLOSET VALUES
-        lower_yellow = np.array([21, 144, 201])
+        #lower_yellow = np.array([21, 144, 201])
+        #upper_yellow = np.array([100, 255, 255])
+        lower_yellow = np.array([17, 108, 135])
         upper_yellow = np.array([100, 255, 255])
-
         mask_yellow = cv2.inRange(hsv, lower_yellow, upper_yellow)
 
         # smooth the mask to allow for better edge detection
         mask_yellow = cv2.GaussianBlur(mask_yellow, (3,3), 0)
 
         # diliations and erosions to remove any small blobs left in image
-        mask_yellow = cv2.erode(mask_yellow, None, iterations=1)
-        mask_yellow = cv2.dilate(mask_yellow, None, iterations=1)
+        mask_yellow = cv2.erode(mask_yellow, np.ones((5,5), np.uint8), iterations=1)
+        mask_yellow = cv2.dilate(mask_yellow, np.ones((5,5), np.uint8), iterations=1)
                
         # from the original image, get the yellow middle line and white boundaries (now in color)
         mask = mask_yellow
@@ -153,7 +157,7 @@ class Image_Processing:
         # get the pixel coordinates that are yellow
         data_points = np.argwhere(edges_yellow>0)
 
-        x_error_pix = 0.0
+        x_error_pix = self.prev_error 
         
         if data_points.size > 0:
             # distance between yellow line and desired heading (mm)
@@ -176,7 +180,7 @@ class Image_Processing:
             R = np.array([[1, 0, 0],[0, -.342, -0.9397], [0, .9397, -.342]])
             
             # extrinsic translation
-            t = np.array([[0], [25.5652], [222.1405]])
+            t = np.array([[0], [93.9693], [34.2020]])
             
             # extrinsic matrix
             T = np.concatenate((R[:,0:2], t), axis=1)
@@ -208,7 +212,9 @@ class Image_Processing:
 
             # x_error_pix[0]: width in pixels, subtract from center to get error from center 
             x_error_pix = (x_error_pix[0]/x_error_pix[2])-160
-        
+            
+            self.prev_error = x_error_pix
+
         #cv2.imshow("red_mask",mask_red)
         #cv2.imshow("mask_yellow", mask_yellow)
         #cv2.imshow("original", image)
