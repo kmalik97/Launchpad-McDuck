@@ -6,10 +6,10 @@ from Adafruit_MotorHAT import Adafruit_MotorHAT
 from launchpad.srv import motionLogic
 
 # define constants
-LEFT_MIN = 50
+LEFT_MIN = 110
 LEFT_MAX = 255
 LEFT_RES = LEFT_MAX - LEFT_MIN
-RIGHT_MIN = 50
+RIGHT_MIN = 110
 RIGHT_MAX = 255
 RIGHT_RES = RIGHT_MAX - RIGHT_MIN
 
@@ -56,12 +56,8 @@ class Motion_Interface:
         angular_gain = 0.25
         
         # decrease linear portion of PWM when turning
-        linear_gain = 1 - angular_gain - 0.3 * (abs(self.angular_vel))
+        linear_gain = 1 - angular_gain - 0.25 * (abs(self.angular_vel))
         
-        # NOTE is this needed anymore?
-        if linear_gain < 0.5:
-            linear_gain = 0.5
-
         # PWM due to linear velocity
         # left motor has reversed polarity
         pwm_linear_left = -np.sign(self.linear_vel) * floor(abs(self.linear_vel) * LEFT_RES + LEFT_MIN)
@@ -76,21 +72,29 @@ class Motion_Interface:
             pwm_angular_left *= -1
             pwm_angular_right *= -1
 
-        # total PWM, do not let it drop below the minimum PWM values
-        pwm_left = min(int(linear_gain * pwm_linear_left + angular_gain * pwm_angular_left), -LEFT_MIN)
-        pwm_right = max(int(linear_gain * pwm_linear_right + angular_gain * pwm_angular_right), RIGHT_MIN)
+        # total PWM 
+        pwm_left = int(linear_gain * pwm_linear_left + angular_gain * pwm_angular_left)
+        pwm_right = int(linear_gain * pwm_linear_right + angular_gain * pwm_angular_right)
 
         # limit how much the PWM can change
-        pwm_delta = 15000
+        pwm_delta = 150000
         if abs(pwm_left - self.pwm_left) > pwm_delta:
+            rospy.loginfo("pre limit left %d"%pwm_left)
             pwm_left = np.sign(pwm_left - self.pwm_left) * pwm_delta + self.pwm_left
+            rospy.loginfo("post limit left %d"%pwm_left)
         if abs(pwm_right - self.pwm_right) > pwm_delta:
             pwm_left = np.sign(pwm_right - self.pwm_right) * pwm_delta + self.pwm_right
         
+        # do not let it drop below the minimum PWM values
+        if abs(pwm_left) < LEFT_MIN:
+            pwm_left = np.sign(pwm_left) * LEFT_MIN
+        if abs(pwm_right) < RIGHT_MIN:
+            pwm_right = np.sign(pwm_right) * RIGHT_MIN
+
         self.pwm_left = pwm_left
         self.pwm_right = pwm_right
 
-        print("vel = [%.2f, %.2f], pwm = [%d, %d]"%(self.linear_vel, self.angular_vel, self.pwm_left, self.pwm_right))
+        rospy.loginfo("motion_interface: vel = [%.2f, %.2f], pwm = [%d, %d]"%(self.linear_vel, self.angular_vel, self.pwm_left, self.pwm_right))
 
     # get linear and angular velocity
     def get_velocity(self):
@@ -106,7 +110,7 @@ class Motion_Interface:
             self.linear_vel = velocities.linear_vel
             self.angular_vel = velocities.angular_vel
         except rospy.ServiceException as e:
-            print("motionLogic service call failed: %s"%e)
+            rospy.loginfo("motion_interface: motionLogic service call failed: %s"%e)
 
     # shutdown
     def on_shutdown(self):
@@ -118,11 +122,11 @@ class Motion_Interface:
         self.motor_left.run(Adafruit_MotorHAT.RELEASE)
         self.motor_right.run(Adafruit_MotorHAT.RELEASE)
         del self.motorhat
-        print("motion_interface node shut down")
+        rospy.loginfo("motion_interface: motion_interface node shut down")
 
 # setup motion logic client
 def client_motion_logic():
-    print("initializing motion_interface node")
+    rospy.loginfo("motion_interface: initializing motion_interface node")
     rospy.init_node("motion_interface")
     motion_interface = Motion_Interface()
     rospy.on_shutdown(motion_interface.on_shutdown)

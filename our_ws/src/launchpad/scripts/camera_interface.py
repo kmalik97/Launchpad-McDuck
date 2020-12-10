@@ -28,16 +28,16 @@ class Camera_Interface:
             image_ros = self.bridge.cv2_to_imgmsg(image, "bgr8")
             return snapshotResponse(image_ros)
         except CvBridgeError as e:
-            print("cv2 to ROS conversion failed: %s"%e)
+            rospy.loginfo("camera_interface: cv2 to ROS conversion failed: %s"%e)
             
     # shutdown
     def on_shutdown(self):
         self.camera.close()
-        print("camera_interface node shutdown")
+        rospy.loginfo("camera_interface: camera_interface node shutdown")
 
 # setup snapshot server
 def server_snapshot():
-    print("initializing camera_interface node")
+    rospy.loginfo("camera_interface: initializing camera_interface node")
     rospy.init_node("camera_interface")
     camera_interface = Camera_Interface()
     rospy.on_shutdown(camera_interface.on_shutdown)
