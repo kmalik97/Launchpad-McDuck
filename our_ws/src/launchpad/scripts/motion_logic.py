@@ -16,7 +16,7 @@ class Motion_Logic:
         self.just_stopped = False
         self.stop_time = time.time()
         self.csv_file = open('motion_logic_output.csv','a') # append mode
-        self.writer = csv.writer(csv_file, lineterminator = '\n')
+        self.writer = csv.writer(self.csv_file, lineterminator = '\n')
 
     # determine linear and angular velocity
     def handle_motion_logic(self, req):
@@ -100,7 +100,7 @@ class Motion_Logic:
 
         # Save data to csv file
         try:
-            writer.writerow([current_time,x_error])
+            self.writer.writerow([current_time,x_error])
         except Exception as E:
             print(E)
             print("--- Error occured during file save ---")
