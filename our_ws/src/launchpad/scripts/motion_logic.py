@@ -1,8 +1,7 @@
 #!/usr/bin/env python
 import rospy
 import sys
-import tty
-import termios
+import time
 import numpy as np
 from launchpad.srv import motionLogic, motionLogicResponse, measurement
 
@@ -13,6 +12,8 @@ class Motion_Logic:
         self.prev_error = 0
         self.linear_vel = 0.55
         self.angular_vel = 0.0
+        self.just_stopped = False
+        self.stop_time = time.time()
 
     # determine linear and angular velocity
     def handle_motion_logic(self, req):
@@ -35,8 +36,8 @@ class Motion_Logic:
 
             # PID Parameters
             Kp = 0.006
-            Ki = 0.003
-            Kd = 0.1
+            Ki = 0.001
+            Kd = 0.01
 
             # running error is the error accumulation over time 
             # if there is a sign change or its close to zero, otherwise keep adding the error
@@ -70,14 +71,30 @@ class Motion_Logic:
                 
         except rospy.ServiceException as e:
             rospy.loginfo("motion_logic: get_measurement service call failed: %s"%e)
+      
+        current_time = time.time()
+        # stop at stop sign
+        if red_obj_det and not self.just_stopped:
+            print("first stop")
+            linear_vel = 0.0
+            angular_vel = 0.0
+            self.just_stopped = True
+            self.stop_time = time.time()
+        elif self.just_stopped and current_time - self.stop_time <= 5:
+            linear_vel = 0.0
+            angular_vel = 0.0
+            print("duckiebot waiting at stop...")
+        elif self.just_stopped and current_time - self.stop_time > 5 and current_time - self.stop_time < 8:
+            linear_vel = 0.55
+        else:
+            self.just_stopped = False
+            print("duckiebot passed stop sign")
+                  
 
         self.linear_vel = linear_vel
         self.angular_vel = angular_vel
         self.prev_error = x_error
-        
-        #linear_vel = 0.0
-        #angular_vel = 0.0
-        
+
         return motionLogicResponse(linear_vel, angular_vel)
 
     # shutdown
