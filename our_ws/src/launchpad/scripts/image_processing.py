@@ -45,22 +45,23 @@ class Image_Processing:
         # distortion coefficients
         D = np.array([[-0.266205], [0.045222], [-0.001402], [-0.000906]])
         
-        red_image = image.copy()
 
+        red_image = image.copy()
         # black out top portion of image so that we ignore the background
         for i in range(240/3):
             for j in range(320):
                 image[i][j] = np.asarray([0,0,0])
-
         # new camera matrix for undistorted image
         K_new, roi = cv2.getOptimalNewCameraMatrix(K, D, DIM, 1, DIM)
         
         # undistort
         und = cv2.undistort(image, K, D, None, K_new)
         
+        red_image = cv2.undistort(red_image, K, D, None, K_new)
+        
         # Red Object Values
-        lower_red = np.array([51, 193, 107])
-        upper_red = np.array([179, 255, 255])
+        lower_red = np.array([0, 144, 179])
+        upper_red = np.array([16, 255, 255])
         
         # Red Mask 
         red_image = red_image.astype(np.uint8)
@@ -68,8 +69,8 @@ class Image_Processing:
         mask_red = cv2.inRange(hsv, lower_red, upper_red)
         #mask_red = cv2.bitwise_and(red_image,red_image,mask=mask_red)
         mask_red = cv2.GaussianBlur(mask_red, (11,11), 0)
-        #mask_red = cv2.erode(mask_red, None, iterations=2)
-        #mask_red = cv2.dilate(mask_red, None, iterations=1)
+        mask_red = cv2.erode(mask_red, None, iterations=2)
+        mask_red = cv2.dilate(mask_red, None, iterations=1)
         #edges_red = cv2.Canny(mask_red, 200, 400)
         edges_red = mask_red
         
@@ -86,18 +87,20 @@ class Image_Processing:
         
         # Finding Red Object
         #cnts = cv2.findContours(mask_red.copy(),cv2.RETR_EXTERNAL,cv2.CHAIN_APPROX_SIMPLE)
+
     
         
         red_obj_det = False
-        THRESHOLD = 20
+        THRESHOLD = 5
 
         # Known Parameters 
-        REAL_WIDTH = 150 # mm  
-        PIXEL_WIDTH = 124 # pixels
-        KNOWN_DISTANCE = 270 # mm
+        REAL_WIDTH = 85 # mm  
+        PIXEL_WIDTH = 78
+        KNOWN_DISTANCE = 290 # mm
 
-        FOCAL_LENGTH = (PIXEL_WIDTH * KNOWN_DISTANCE) / REAL_WIDTH 
-        
+        # F_x from the intrinsic parameters
+        FOCAL_LENGTH = K_new[0,0]
+        #FOCAL_LENGTH = (PIXEL_WIDTH * KNOWN_DISTANCE) / REAL_WIDTH 
 
 
         # If cnts is empty
@@ -109,8 +112,6 @@ class Image_Processing:
                 red_obj_det = False
                 print("Area under threshold")
             else:
-                #print('Red Object Detected Above Threshold')
-
                 
                 # Detecting object corners of the red object in pixels
                 x,y,w,h = cv2.boundingRect(c)
@@ -118,11 +119,13 @@ class Image_Processing:
                 distance = (REAL_WIDTH * FOCAL_LENGTH) / w 
                 print("Distance to object %d" % distance)
 
-                if distance <= 200:
+                if distance <= 155:
                     red_obj_det = True
 
                 # Drawing Rectangle Around object 
+
                 cv2.rectangle(red_image,(x,y),(x+w,y+h),(0,255,0),2)
+                print(w)
                 
                 # Center of mass 
                 M = cv2.moments(c)
@@ -135,8 +138,8 @@ class Image_Processing:
         # CLOSET VALUES
         #lower_yellow = np.array([21, 144, 201])
         #upper_yellow = np.array([100, 255, 255])
-        lower_yellow = np.array([17, 108, 135])
-        upper_yellow = np.array([100, 255, 255])
+        lower_yellow = np.array([3, 156, 213])
+        upper_yellow = np.array([177, 255, 255])
         mask_yellow = cv2.inRange(hsv, lower_yellow, upper_yellow)
 
         # smooth the mask to allow for better edge detection
@@ -215,7 +218,7 @@ class Image_Processing:
             
             self.prev_error = x_error_pix
 
-        #cv2.imshow("red_mask",mask_red)
+        cv2.imshow("red_mask",mask_red)
         #cv2.imshow("mask_yellow", mask_yellow)
         #cv2.imshow("original", image)
         cv2.imshow("result", result)
@@ -223,7 +226,7 @@ class Image_Processing:
         cv2.waitKey(10)
 
         rospy.loginfo("image_processing: x_error_pix: %f"%x_error_pix)
-
+        print(red_obj_det)
         return measurementResponse(x_error_pix, red_obj_det)
 
     # shutdown
