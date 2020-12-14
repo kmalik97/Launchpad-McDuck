@@ -4,6 +4,7 @@ import sys
 import time
 import numpy as np
 from launchpad.srv import motionLogic, motionLogicResponse, measurement
+import csv
 
 class Motion_Logic:
     def __init__(self):
@@ -14,6 +15,8 @@ class Motion_Logic:
         self.angular_vel = 0.0
         self.just_stopped = False
         self.stop_time = time.time()
+        self.csv_file = open('motion_logic_output.csv','a') # append mode
+        self.writer = csv.writer(csv_file, lineterminator = '\n')
 
     # determine linear and angular velocity
     def handle_motion_logic(self, req):
@@ -95,10 +98,19 @@ class Motion_Logic:
         self.angular_vel = angular_vel
         self.prev_error = x_error
 
+        # Save data to csv file
+        try:
+            writer.writerow([current_time,x_error])
+        except Exception as E:
+            print(E)
+            print("--- Error occured during file save ---")
+
+
         return motionLogicResponse(linear_vel, angular_vel)
 
     # shutdown
     def on_shutdown(self):
+        self.csv_file.close()
         rospy.loginfo("motion_logic: motion_logic node shutdown")
 
 # setup motion logic server

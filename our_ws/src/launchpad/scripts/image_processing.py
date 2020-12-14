@@ -100,7 +100,7 @@ class Image_Processing:
 
         # F_x from the intrinsic parameters
         FOCAL_LENGTH = K_new[0,0]
-        #FOCAL_LENGTH = (PIXEL_WIDTH * KNOWN_DISTANCE) / REAL_WIDTH 
+        FOCAL_LENGTH_CALC = (PIXEL_WIDTH * KNOWN_DISTANCE) / REAL_WIDTH 
 
 
         # If cnts is empty
@@ -117,6 +117,7 @@ class Image_Processing:
                 x,y,w,h = cv2.boundingRect(c)
                 
                 distance = (REAL_WIDTH * FOCAL_LENGTH) / w 
+                distance2 = (REAL_WIDTH * FOCAL_LENGTH_CALC ) / w 
                 print("Distance to object %d" % distance)
 
                 if distance <= 155:
@@ -131,9 +132,10 @@ class Image_Processing:
                 M = cv2.moments(c)
                 center = (int(M["m10"] / M["m00"]), int(M["m01"] / M["m00"]))
                 centerText = "Distance to Object {distance}".format(distance=distance)
+                centerText2 = "Distance2 to Object {distance}".format(distance=distance2)
                 font = cv2.FONT_HERSHEY_SIMPLEX
                 cv2.putText(red_image, centerText, (4, 200), font, 0.5, (0, 255, 0), 2, cv2.LINE_AA)
-
+                cv2.putText(red_image, centerText2, (4, 220), font, 0.5, (0, 255, 0), 2, cv2.LINE_AA)
 
         # CLOSET VALUES
         #lower_yellow = np.array([21, 144, 201])
