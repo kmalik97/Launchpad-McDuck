@@ -6,10 +6,10 @@ from Adafruit_MotorHAT import Adafruit_MotorHAT
 from launchpad.srv import motionLogic
 
 # define constants
-LEFT_MIN = 110
+LEFT_MIN = 80
 LEFT_MAX = 255
 LEFT_RES = LEFT_MAX - LEFT_MIN
-RIGHT_MIN = 110
+RIGHT_MIN = 80
 RIGHT_MAX = 255
 RIGHT_RES = RIGHT_MAX - RIGHT_MIN
 
@@ -26,7 +26,7 @@ class Motion_Interface:
 
     # set motors
     def set_motors(self, event):
-        # get linear and angular velocity, both of which are in range [-1 1]
+        # get linear and angular velocity, both of which are in range [-1 1] (from motion_logic.py)
         self.get_velocity()
 
         # get motor PWM
@@ -53,7 +53,7 @@ class Motion_Interface:
 
     # determine motor PWM
     def get_pwm(self):    
-        angular_gain = 0.25
+        angular_gain = 0.2
         
         # decrease linear portion of PWM when turning
         linear_gain = 1 - angular_gain - 0.25 * (abs(self.angular_vel))
@@ -64,8 +64,9 @@ class Motion_Interface:
         pwm_linear_right = np.sign(self.linear_vel) * floor(abs(self.linear_vel) * RIGHT_RES + RIGHT_MIN)
 
         # PWM due to angular velocity
-        pwm_angular_left = np.sign(self.angular_vel) * floor(abs(self.angular_vel) * LEFT_RES)
-        pwm_angular_right = np.sign(self.angular_vel) * floor(abs(self.angular_vel) * RIGHT_RES)
+        # EDIT: Instead of left res/ right res, multiply by max
+        pwm_angular_left = np.sign(self.angular_vel) * floor(abs(self.angular_vel) * LEFT_MAX)
+        pwm_angular_right = np.sign(self.angular_vel) * floor(abs(self.angular_vel) * RIGHT_MAX)
 
         # need to negate angular PWM if driving backwards
         if self.linear_vel < 0:
