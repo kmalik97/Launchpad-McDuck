@@ -6,7 +6,6 @@ import time
 import numpy as np
 from cv_bridge import CvBridge, CvBridgeError
 from launchpad.srv import snapshot,measurement,measurementResponse
-# image_processing.py: get the image from camera_interface.py, spit out string command to motion_logic
 
 class Image_Processing:
     def __init__(self):
@@ -44,19 +43,19 @@ class Image_Processing:
         
         # distortion coefficients
         D = np.array([[-0.266205], [0.045222], [-0.001402], [-0.000906]])
-        
 
         red_image = image.copy()
+        
         # black out top portion of image so that we ignore the background
         for i in range(240/3):
             for j in range(320):
                 image[i][j] = np.asarray([0,0,0])
+       
         # new camera matrix for undistorted image
         K_new, roi = cv2.getOptimalNewCameraMatrix(K, D, DIM, 1, DIM)
         
         # undistort
         und = cv2.undistort(image, K, D, None, K_new)
-        
         red_image = cv2.undistort(red_image, K, D, None, K_new)
         
         # Red Object Values
@@ -67,29 +66,12 @@ class Image_Processing:
         red_image = red_image.astype(np.uint8)
         hsv = cv2.cvtColor(red_image,cv2.COLOR_BGR2HSV)
         mask_red = cv2.inRange(hsv, lower_red, upper_red)
-        #mask_red = cv2.bitwise_and(red_image,red_image,mask=mask_red)
         mask_red = cv2.GaussianBlur(mask_red, (11,11), 0)
         mask_red = cv2.erode(mask_red, None, iterations=2)
         mask_red = cv2.dilate(mask_red, None, iterations=1)
-        #edges_red = cv2.Canny(mask_red, 200, 400)
-        edges_red = mask_red
         
+        cnts = cv2.findContours(mask_red, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)[1]
 
-        # grayscale
-        #hsv = cv2.cvtColor(edges_red, cv2.COLOR_BGR2GRAY)
-        #ret, thresh = cv2.threshold(hsv, 127, 255, 0)
-        thresh = edges_red
-        #cv2.imshow('thresh', thresh)
-        
-        cnts = cv2.findContours(edges_red, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)[1]
-
-        # print(cnts)
-        
-        # Finding Red Object
-        #cnts = cv2.findContours(mask_red.copy(),cv2.RETR_EXTERNAL,cv2.CHAIN_APPROX_SIMPLE)
-
-    
-        
         red_obj_det = False
         THRESHOLD = 5
 
@@ -102,7 +84,6 @@ class Image_Processing:
         FOCAL_LENGTH = K_new[0,0]
         FOCAL_LENGTH_CALC = (PIXEL_WIDTH * KNOWN_DISTANCE) / REAL_WIDTH 
 
-
         # If cnts is empty
         if len(cnts) == 0:
             red_obj_detect = False
@@ -110,23 +91,18 @@ class Image_Processing:
             c = max(cnts, key=cv2.contourArea)
             if cv2.contourArea(c) < THRESHOLD:
                 red_obj_det = False
-                print("Area under threshold")
             else:
-                
                 # Detecting object corners of the red object in pixels
                 x,y,w,h = cv2.boundingRect(c)
                 
                 distance = (REAL_WIDTH * FOCAL_LENGTH) / w 
                 distance2 = (REAL_WIDTH * FOCAL_LENGTH_CALC ) / w 
-                print("Distance to object %d" % distance)
 
                 if distance <= 155:
                     red_obj_det = True
 
                 # Drawing Rectangle Around object 
-
                 cv2.rectangle(red_image,(x,y),(x+w,y+h),(0,255,0),2)
-                print(w)
                 
                 # Center of mass 
                 M = cv2.moments(c)
@@ -157,11 +133,11 @@ class Image_Processing:
 
         # edge detection
         edges_yellow = cv2.Canny(mask_yellow, 200, 400)     # do we even need this?
-        edges = edges_yellow
         
         # get the pixel coordinates that are yellow
         data_points = np.argwhere(edges_yellow>0)
 
+        # default is previous error
         x_error_pix = self.prev_error 
         
         if data_points.size > 0:
@@ -216,19 +192,14 @@ class Image_Processing:
             x_error_pix = np.matmul(H,x_error_pix)
 
             # x_error_pix[0]: width in pixels, subtract from center to get error from center 
-            x_error_pix = (x_error_pix[0]/x_error_pix[2])-160
-            
+            x_error_pix = (x_error_pix[0]/x_error_pix[2]) - K_new[0,2]
             self.prev_error = x_error_pix
 
-        cv2.imshow("red_mask",mask_red)
-        #cv2.imshow("mask_yellow", mask_yellow)
-        #cv2.imshow("original", image)
-        cv2.imshow("result", result)
+        cv2.imshow("red_mask", mask_red)
+        cv2.imshow("mask_yellow", mask_yellow)
         cv2.imshow("red image", red_image)
         cv2.waitKey(10)
 
-        rospy.loginfo("image_processing: x_error_pix: %f"%x_error_pix)
-        print(red_obj_det)
         return measurementResponse(x_error_pix, red_obj_det)
 
     # shutdown
