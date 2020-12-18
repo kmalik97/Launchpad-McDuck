@@ -1,21 +1,22 @@
 #!/usr/bin/env python
 import rospy
-import sys
 import time
 import numpy as np
-from launchpad.srv import motionLogic, motionLogicResponse, measurement
 import csv
+from launchpad.srv import motionLogic, motionLogicResponse, measurement
 
+# constant linear velocity
+v = 0.45
 class Motion_Logic:
     def __init__(self):
         self.service = rospy.Service("motionLogic", motionLogic, self.handle_motion_logic)
         self.running_error = 0
         self.prev_error = 0
-        self.linear_vel = 0.55
+        self.linear_vel = v
         self.angular_vel = 0.0
         self.just_stopped = False
         self.stop_time = time.time()
-        self.csv_file = open('motion_logic_output.csv','a') # append mode
+        self.csv_file = open('motion_logic_output.csv','w') # overwrite mode
         self.writer = csv.writer(self.csv_file, lineterminator = '\n')
 
     # determine linear and angular velocity
@@ -52,8 +53,6 @@ class Motion_Logic:
             # error difference between this function call and the previous function call
             delta_error = x_error - self.prev_error
             
-            rospy.loginfo("motion_logic: x_error: %f, running error: %f, prev_error: %f"%(x_error,self.running_error, self.prev_error))
-
             # saturate running error
             error_saturation = 1000 
             if abs(self.running_error) > error_saturation:
@@ -69,42 +68,38 @@ class Motion_Logic:
                 motor_offset = 1
 
             # convert motor offset to angular velocity
-            # positive motor offset = turn left = negative angular velocity
-            angular_vel = -1*motor_offset
-                
+            # positive motor offset = turn right = negative angular velocity
+            angular_vel = -motor_offset
+            
+            current_time = time.time()
+        
+            # stop at stop sign
+            if red_obj_det and not self.just_stopped:
+                linear_vel = 0.0
+                angular_vel = 0.0
+                self.just_stopped = True
+                self.stop_time = time.time()
+            elif self.just_stopped and current_time - self.stop_time <= 5:
+                linear_vel = 0.0
+                angular_vel = 0.0
+            elif self.just_stopped and current_time - self.stop_time > 5 and current_time - self.stop_time < 8:
+                linear_vel = v
+            else:
+                self.just_stopped = False
+        
+            # Save data to csv file
+            try:
+                self.writer.writerow([current_time,x_error])
+            except Exception as E:
+                rospy.loginfo(E)
+                rospy.loginfo("--- Error occured during file save ---")
+        
         except rospy.ServiceException as e:
             rospy.loginfo("motion_logic: get_measurement service call failed: %s"%e)
       
-        current_time = time.time()
-        # stop at stop sign
-        if red_obj_det and not self.just_stopped:
-            print("first stop")
-            linear_vel = 0.0
-            angular_vel = 0.0
-            self.just_stopped = True
-            self.stop_time = time.time()
-        elif self.just_stopped and current_time - self.stop_time <= 5:
-            linear_vel = 0.0
-            angular_vel = 0.0
-            print("duckiebot waiting at stop...")
-        elif self.just_stopped and current_time - self.stop_time > 5 and current_time - self.stop_time < 8:
-            linear_vel = 0.55
-        else:
-            self.just_stopped = False
-            print("duckiebot passed stop sign")
-                  
-
         self.linear_vel = linear_vel
         self.angular_vel = angular_vel
         self.prev_error = x_error
-
-        # Save data to csv file
-        try:
-            self.writer.writerow([current_time,x_error])
-        except Exception as E:
-            print(E)
-            print("--- Error occured during file save ---")
-
 
         return motionLogicResponse(linear_vel, angular_vel)
 

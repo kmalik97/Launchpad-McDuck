@@ -64,7 +64,6 @@ class Motion_Interface:
         pwm_linear_right = np.sign(self.linear_vel) * floor(abs(self.linear_vel) * RIGHT_RES + RIGHT_MIN)
 
         # PWM due to angular velocity
-        # EDIT: Instead of left res/ right res, multiply by max
         pwm_angular_left = np.sign(self.angular_vel) * floor(abs(self.angular_vel) * LEFT_MAX)
         pwm_angular_right = np.sign(self.angular_vel) * floor(abs(self.angular_vel) * RIGHT_MAX)
 
@@ -77,15 +76,6 @@ class Motion_Interface:
         pwm_left = int(linear_gain * pwm_linear_left + angular_gain * pwm_angular_left)
         pwm_right = int(linear_gain * pwm_linear_right + angular_gain * pwm_angular_right)
 
-        # limit how much the PWM can change
-        pwm_delta = 150000
-        if abs(pwm_left - self.pwm_left) > pwm_delta:
-            rospy.loginfo("pre limit left %d"%pwm_left)
-            pwm_left = np.sign(pwm_left - self.pwm_left) * pwm_delta + self.pwm_left
-            rospy.loginfo("post limit left %d"%pwm_left)
-        if abs(pwm_right - self.pwm_right) > pwm_delta:
-            pwm_left = np.sign(pwm_right - self.pwm_right) * pwm_delta + self.pwm_right
-        
         # do not let it drop below the minimum PWM values
         if abs(pwm_left) < LEFT_MIN:
             pwm_left = np.sign(pwm_left) * LEFT_MIN
@@ -94,8 +84,6 @@ class Motion_Interface:
 
         self.pwm_left = pwm_left
         self.pwm_right = pwm_right
-
-        rospy.loginfo("motion_interface: vel = [%.2f, %.2f], pwm = [%d, %d]"%(self.linear_vel, self.angular_vel, self.pwm_left, self.pwm_right))
 
     # get linear and angular velocity
     def get_velocity(self):
